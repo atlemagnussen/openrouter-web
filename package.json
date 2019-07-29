@@ -1,0 +1,29 @@
+{
+  "name": "dyi-router-web",
+  "version": "0.1.0",
+  "description": "web front end for a dyi router",
+  "main": "server.js",
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "keywords": [
+    "diy",
+    "router",
+    "network",
+    "firewall"
+  ],
+  "author": "atlemagnussen",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "isomorphic-unfetch": "^3.0.0",
+    "next": "^9.0.2",
+    "react": "^16.8.6",
+    "react-dom": "^16.8.6"
+  },
+  "devDependencies": {
+    "eslint-plugin-react": "^7.14.3"
+  }
+}
