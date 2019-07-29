@@ -1,15 +1,15 @@
 import Layout from '../components/Layout';
 import Link from 'next/link';
-import fetch from 'isomorphic-unfetch';
+import dataService from '../services/dataservice';
 
 const Index = props => (
   <Layout>
-    <h1>Batman TV Shows</h1>
+    <h1>Active Clients</h1>
     <ul>
-      {props.shows.map(show => (
-        <li key={show.id}>
-          <Link href="/p/[id]" as={`/p/${show.id}`}>
-            <a>{show.name}</a>
+      {props.leases.map(lease => (
+        <li key={lease.mac}>
+          <Link href="/device/[id]" as={`/device/${lease.mac}`}>
+            <a>{lease.ip} - {lease.end}</a>
           </Link>
         </li>
       ))}
@@ -18,14 +18,12 @@ const Index = props => (
 );
 
 Index.getInitialProps = async function() {
-  const res = await fetch('https://api.tvmaze.com/search/shows?q=batman');
-  const data = await res.json();
+    const data = await dataService.getActiveLeases();
+    console.log(`Show data fetched. Count: ${data.length}`);
 
-  console.log(`Show data fetched. Count: ${data.length}`);
-
-  return {
-    shows: data.map(entry => entry.show)
-  };
+    return {
+        leases: data
+    };
 };
 
 export default Index;

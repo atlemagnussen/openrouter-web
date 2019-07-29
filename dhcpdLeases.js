@@ -1,18 +1,19 @@
 const fs = require("fs");
-const FILEPATH = "dhcpd.leases";
-
+const dev = process.env.NODE_ENV !== 'production'; //true false
+const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
+console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
     async getLeasesByMac(mac) {
         const arr = await this.ReadAllLeases();
         const filter = arr.filter((f) => {
-            return f.mac == mac;
+            return f.mac === mac;
         });
         return filter;
     }
     async getLeasesByHost(host) {
         const arr = await this.ReadAllLeases();
         const filter = arr.filter((f) => {
-            return f.host == host;
+            return f.host === host;
         });
         return filter;
     }
@@ -27,6 +28,14 @@ class DhcpdLeases {
         }
         const json = this.parseJson(lines);
         return json;
+    }
+    async getActiveLeases() {
+        const all = await this.ReadAllLeases();
+        const now = new Date();
+        console.log(`Fetch newer leases than ${now.toISOString()}`);
+        return all.filter((f) => {
+            return f.end > now;
+        })
     }
     readFile(filePath) {
         return new Promise(resolve => {
@@ -100,18 +109,18 @@ class DhcpdLeases {
         const trim = line.replace("starts", "").replace("ends", "").trim();
         const year = trim.substring(2,6);
         const month = trim.substring(7,9);
+        const monthInt = parseInt(month, 10);
         const date = trim.substring(10,12);
         const hour = trim.substring(13,15);
         const min = trim.substring(16,18);
         const sec = trim.substring(19,21);
-        const d = new Date(Date.UTC(year, month, date, hour, min, sec));
+        const d = new Date(Date.UTC(year, monthInt - 1, date, hour, min, sec));
         return d;
     }
 }
 
 const test = async () => {
     const parse = new DhcpdLeases();
-    // const res = await parse.ReadAsJson(FILEPATH);
     const res = await parse.getLeasesByHost("Chromecast");
     console.log(res);
     return "done";
