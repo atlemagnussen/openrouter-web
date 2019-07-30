@@ -12,7 +12,6 @@ class Cors {
         }
         
         res.set('Access-Control-Allow-Origin', origin);
-        res.set('Access-Control-Allow-Origin', 'http://192.168.1.96:3000');
         res.set("Access-Control-Allow-Credentials", "true");
         res.set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
         res.set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
