@@ -6,7 +6,7 @@ const Post = props => (
         <h1>Device</h1>
         <ul>
             {props.leases.map(lease => (
-            <li key={lease.mac}>
+            <li>
                 {lease.mac} - {lease.ip} - {lease.host} - {lease.start} - {lease.end}
             </li>
             ))}

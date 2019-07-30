@@ -5,15 +5,13 @@ import dataService from '../services/dataservice';
 const Index = props => (
   <Layout>
     <h1>Active Clients</h1>
-    <ul>
       {props.leases.map(lease => (
-        <li key={lease.mac}>
+          <p>
           <Link href="/device/[id]" as={`/device/${lease.mac}`}>
             <a>{lease.ip} - {lease.end}</a>
           </Link>
-        </li>
+          </p>
       ))}
-    </ul>
   </Layout>
 );
 

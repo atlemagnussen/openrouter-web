@@ -1,4 +1,5 @@
 const fs = require("fs");
+const getUuid = require('uuid-by-string')
 const dev = process.env.NODE_ENV !== 'production'; //true false
 const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
@@ -78,7 +79,10 @@ class DhcpdLeases {
                     current.host = host;
                 }
                 if (line.includes("}")) {
-                    array.push(Object.assign({}, current));
+                    const add = {
+                        id: getUuidDet(current)
+                    };
+                    array.push(Object.assign(add, current));
                     current = null;
                 }
             }
@@ -116,6 +120,10 @@ class DhcpdLeases {
         const sec = trim.substring(19,21);
         const d = new Date(Date.UTC(year, monthInt - 1, date, hour, min, sec));
         return d;
+    }
+    getUuidDet(lease) {
+        const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`
+        return getUuid(leaseString);
     }
 }
 
