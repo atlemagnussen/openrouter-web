@@ -2,4 +2,4 @@
 export NODE_ENV=production
 
 # The process to start
-node server.js 3000
+node server.js
