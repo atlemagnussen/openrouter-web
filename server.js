@@ -10,18 +10,6 @@ const handle = nextApp.getRequestHandler() //part of next config
 
 const port = process.argv[2] || 4000;
 console.log(`dev: ${dev}`);
-// static /
-const staticOpts = {
-    "dotfiles": "ignore",
-    "etag": false,
-    "extensions": ["js", "html"],
-    "index": "index.html",
-    "maxAge": "1d",
-    "redirect": false,
-    "setHeaders": (res) => {
-        res.set("x-timestamp", Date.now());
-    }
-};
 
 const stdErrorHandling = (res, err) => {
     console.error(err);
@@ -43,8 +31,10 @@ nextApp.prepare()
 
     router.get("/leases", async (req, res) => {
         try {
+            log("get leases");
             const allStd = await leases.getActiveLeases();
             res.json(allStd);
+            log("got leases");
         } catch (err) {
             stdErrorHandling(res, err);
         }
@@ -52,8 +42,10 @@ nextApp.prepare()
     
     router.get("/leases/:mac", async (req, res) => {
         try {
+            log(`get leases for ${req.params.mac}`);
             const data = await leases.getLeasesByMac(req.params.mac);
             res.json(data);
+            log(`got leases for ${req.params.mac}`);
         } catch (err) {
             stdErrorHandling(res, err);
         }
@@ -68,3 +60,7 @@ nextApp.prepare()
     console.log(`Listening on port: ${port}`);
 });
 
+const log = (msg) => {
+    const d = new Date().toTimeString();
+    console.log(`${d} - ${msg}`);
+};
