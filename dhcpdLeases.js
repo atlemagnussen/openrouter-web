@@ -80,7 +80,7 @@ class DhcpdLeases {
                 }
                 if (line.includes("}")) {
                     const add = {
-                        id: getUuidDet(current)
+                        id: this.getUuidDet(current)
                     };
                     array.push(Object.assign(add, current));
                     current = null;
