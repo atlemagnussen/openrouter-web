@@ -3,6 +3,7 @@ const next = require('next')
 const path = require("path");
 const expressRouter = express.Router; // make eslint shut up
 const leases = require("./dhcpdLeases.js");
+const cors = require('./cors');
 
 const dev = process.env.NODE_ENV !== "production"; //true false
 const nextApp = next({ dev });
@@ -30,6 +31,7 @@ nextApp.prepare()
     app.use("/api", router);
 
     router.get("/leases", async (req, res) => {
+        cors.addHeaders(req, res);
         try {
             log("get leases");
             const allStd = await leases.getActiveLeases();
@@ -41,6 +43,7 @@ nextApp.prepare()
     });
     
     router.get("/leases/:mac", async (req, res) => {
+        cors.addHeaders(req, res);
         try {
             log(`get leases for ${req.params.mac}`);
             const data = await leases.getLeasesByMac(req.params.mac);
