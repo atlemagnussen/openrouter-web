@@ -1,14 +1,15 @@
 import Layout from '../components/Layout';
 import Link from 'next/link';
 import dataService from '../services/dataservice';
+import formatters from '../services/formatters';
 
 const Index = props => (
   <Layout>
     <h1>Active Clients</h1>
       {props.leases.map(lease => (
-          <p>
+          <p key={lease.id}>
           <Link href="/device/[id]" as={`/device/${lease.mac}`}>
-            <a>{lease.ip} - {lease.end}</a>
+            <a>{lease.ip} - {lease.host} - {formatters.toSmallDateTime(lease.end)}</a>
           </Link>
           </p>
       ))}

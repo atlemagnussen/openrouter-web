@@ -1,13 +1,14 @@
 import Layout from '../../components/Layout';
 import dataservice from '../../services/dataservice';
+import formatters from '../../services/formatters';
 
 const Post = props => (
     <Layout>
-        <h1>Device</h1>
+        <h1>Device {props.mac}</h1>
         <ul>
             {props.leases.map(lease => (
-            <li>
-                {lease.mac} - {lease.ip} - {lease.host} - {lease.start} - {lease.end}
+            <li key={lease.id}>
+                {lease.ip} - {lease.host} - {formatters.toSmallDateTime(lease.start)} - {formatters.toSmallDateTime(lease.end)}
             </li>
             ))}
         </ul>
@@ -20,7 +21,7 @@ Post.getInitialProps = async function(context) {
 
   console.log(`Fetched device: ${id}`);
 
-  return { leases: data };
+  return { mac: id, leases: data };
 };
 
 export default Post;
