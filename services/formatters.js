@@ -1,8 +1,8 @@
 class Formatters {
     toSmallDateTime(dStr) {
         const d = new Date(dStr);
-        return `${this.pad(d.getMonth()+1, 2)}-${d.getDate()} 
-                ${d.getHours()}:${d.getMinutes()}`;
+        return `${this.pad(d.getMonth()+1, 2)}-${this.pad(d.getDate())} 
+                ${this.pad(d.getHours())}:${this.pad(d.getMinutes())}`;
     }
     pad(input, size) {
         let s = `${input}`;
