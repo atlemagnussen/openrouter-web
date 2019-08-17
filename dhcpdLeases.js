@@ -1,6 +1,6 @@
 const fs = require("fs");
-const getUuid = require('uuid-by-string')
-const dev = process.env.NODE_ENV !== 'production'; //true false
+const getUuid = require("uuid-by-string");
+const dev = process.env.NODE_ENV !== "production"; //true false
 const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
@@ -30,13 +30,30 @@ class DhcpdLeases {
         const json = this.parseJson(lines);
         return json;
     }
-    async getActiveLeases() {
+    async getActiveLeases(date) {
         const all = await this.ReadAllLeases();
-        const now = new Date();
-        console.log(`Fetch newer leases than ${now.toISOString()}`);
-        return all.filter((f) => {
-            return f.end > now;
-        })
+        console.log(`Fetch newer leases than ${date.toISOString()}`);
+        const active = all.filter((f) => {
+            return f.end > date;
+        });
+        const sorted = active.sort(function(a,b){
+            return new Date(b.end) - new Date(a.end);
+        });
+        return sorted;
+    }
+    async getActiveClients(date) {
+        if (!date) {
+            date = new Date();
+        }
+        const activeLeases = await this.getActiveLeases(date);
+        const macsUnique = [...new Set(activeLeases.map(x => x.mac))];
+        return activeLeases.filter((f) => {
+            if (macsUnique.includes(f.mac)) {
+                const index = macsUnique.indexOf(f.mac);
+                if (index !== -1) macsUnique.splice(index, 1);
+                return true;
+            }
+        });
     }
     readFile(filePath) {
         return new Promise(resolve => {
@@ -122,20 +139,9 @@ class DhcpdLeases {
         return d;
     }
     getUuidDet(lease) {
-        const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`
+        const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`;
         return getUuid(leaseString);
     }
 }
-
-const test = async () => {
-    const parse = new DhcpdLeases();
-    const res = await parse.getLeasesByHost("Chromecast");
-    console.log(res);
-    return "done";
-};
-  
-// test()
-//     .then(console.log)
-//     .catch(console.error);
 
 module.exports = new DhcpdLeases();

@@ -1,22 +1,12 @@
-const getUuid = require('uuid-by-string')
+const parse = require("./dhcpdLeases.js");
 
-var lease = {
-    "ip":"192.168.1.156",
-    "start": new Date("2019-07-30T07:11:23.000Z"),
-    "end": new Date("2019-07-30T07:21:23.000Z"),
-    "mac":"24:18:1d:35:52:90",
-    "uid":"01:24:18:1d:35:52:90",
-    "host":"Galaxy-S8"
-}
+const test = async () => {
+    const d = new Date(Date.UTC(2019, 6, 29, 19, 0));
+    // const res = await parse.getActiveLeases(d);
+    const res = await parse.getActiveClients(d);
+    console.log(res);
+};
 
-var leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`
-
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
-console.log(getUuid(leaseString))
+test()
+    .then(console.log)
+    .catch(console.error);
