@@ -1,6 +1,11 @@
 import fetch from "isomorphic-unfetch";
 const baseUrl = "http://192.168.1.1:4000";
 class DataService {
+    async getAllClients() {
+        const data = await fetch(`${baseUrl}/api/clients`)
+            .then(res => res.json());
+        return data;
+    }
     async getAllLeases() {
         const data = await fetch(`${baseUrl}/api/leases`)
             .then(res => res.json());

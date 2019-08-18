@@ -5,20 +5,20 @@ const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
     async getLeasesByMac(mac) {
-        const arr = await this.ReadAllLeases();
+        const arr = await this.readAllLeases();
         const filter = arr.filter((f) => {
             return f.mac === mac;
         });
         return filter;
     }
     async getLeasesByHost(host) {
-        const arr = await this.ReadAllLeases();
+        const arr = await this.readAllLeases();
         const filter = arr.filter((f) => {
             return f.host === host;
         });
         return filter;
     }
-    async ReadAllLeases() {
+    async readAllLeases() {
         const raw = await this.readFile(FILEPATH);
         if (!raw) {
             throw new Error(`No content in filepath "${FILEPATH}"`);
@@ -30,10 +30,9 @@ class DhcpdLeases {
         const json = this.parseJson(lines);
         return json;
     }
-    async getActiveLeases(date) {
-        const all = await this.ReadAllLeases();
+    getActiveLeases(allLeases, date) {
         console.log(`Fetch newer leases than ${date.toISOString()}`);
-        const active = all.filter((f) => {
+        const active = allLeases.filter((f) => {
             return f.end > date;
         });
         const sorted = active.sort(function(a,b){
@@ -46,8 +45,28 @@ class DhcpdLeases {
             date = new Date();
         }
         const activeLeases = await this.getActiveLeases(date);
-        const macsUnique = [...new Set(activeLeases.map(x => x.mac))];
-        return activeLeases.filter((f) => {
+        return this.getDistinct(activeLeases);
+    }
+    async getAllClients(date) {
+        if (!date) {
+            date = new Date();
+        }
+        const allLeases = await this.readAllLeases();
+        const activeLeases = this.getActiveLeases(allLeases, date);
+        const activeClients = this.getDistinct(activeLeases);
+
+        const inactiveLeases = allLeases.filter((f) => {
+            return !activeClients.find(x => x.mac === f.mac);
+        });
+        const inactiveClients = this.getDistinct(inactiveLeases);
+        return {
+            active: activeClients,
+            inactive: inactiveClients
+        };
+    }
+    getDistinct(leases) {
+        const macsUnique = [...new Set(leases.map(x => x.mac))];
+        return leases.filter((f) => {
             if (macsUnique.includes(f.mac)) {
                 const index = macsUnique.indexOf(f.mac);
                 if (index !== -1) macsUnique.splice(index, 1);

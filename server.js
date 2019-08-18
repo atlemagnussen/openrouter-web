@@ -30,11 +30,22 @@ nextApp.prepare()
         const router = expressRouter();
         app.use("/api", router);
     
+        router.get("/clients", async (req, res) => {
+            cors.addHeaders(req, res);
+            try {
+                log("get leases");
+                const allStd = await leases.getAllClients();
+                res.json(allStd);
+                log("got leases");
+            } catch (err) {
+                stdErrorHandling(res, err);
+            }
+        });
         router.get("/leases", async (req, res) => {
             cors.addHeaders(req, res);
             try {
                 log("get leases");
-                const allStd = await leases.getActiveClients();
+                const allStd = await leases.readAllLeases();
                 res.json(allStd);
                 log("got leases");
             } catch (err) {

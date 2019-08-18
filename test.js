@@ -3,7 +3,7 @@ const parse = require("./dhcpdLeases.js");
 const test = async () => {
     const d = new Date(Date.UTC(2019, 6, 29, 19, 0));
     // const res = await parse.getActiveLeases(d);
-    const res = await parse.getActiveClients(d);
+    const res = await parse.getAllClients(d);
     console.log(res);
 };
 
