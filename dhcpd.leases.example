@@ -1,0 +1,6 @@
+lease 192.168.1.101 {
+	starts 1 2019/07/29 18:41:13 UTC;
+	ends 1 2019/07/29 18:51:13 UTC;
+	hardware ethernet 00:22:61:46:5b:ac;
+	client-hostname "RADIO";
+}
