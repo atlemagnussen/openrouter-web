@@ -7,3 +7,10 @@ Should work on both Linux and BSD
 
 -   Running [ISC DHCP server](https://www.isc.org/dhcp/)
 -   [Fping tool](https://fping.org/) installed
+
+## Run in production
+
+```sh
+npm run build
+./start-prod.sh
+```
