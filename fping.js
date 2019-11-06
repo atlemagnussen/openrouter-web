@@ -6,7 +6,7 @@ class Fping {
         const network = `${subnet}/${netmask}`;
         const args = ["-4aqg", network];
         return new Promise(resolve => {
-            exec("/usr/bin/fping ss " + args.join(" "), function(err, stdout, stderr) {
+            exec("fping " + args.join(" "), function(err, stdout, stderr) {
                 if (err.code == 1) err = null;
                 if (err) {
                     throw err;
