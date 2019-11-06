@@ -8,7 +8,7 @@ console.log(`FILEPATH=${FILEPATH}`);
 class DhcpClients {
     async getAll() {
         const config = await this.readConfig();
-        const activeIps = this.getActive(config);
+        const activeIps = await this.getActive(config);
         let id = 0;
         const active = activeIps.map(ip => {
             id += 1;
