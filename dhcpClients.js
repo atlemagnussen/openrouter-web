@@ -18,7 +18,7 @@ class DhcpClients {
             };
         });
         const inactiveHosts = config.hosts.filter(f => {
-            return !active.find(x => x === f.ip);
+            return !active.find(x => x.ip === f.ip);
         });
         const inactive = inactiveHosts.map(i => {
             id += 1;
