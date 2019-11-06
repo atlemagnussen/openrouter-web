@@ -8,8 +8,8 @@ import dataservice from "../services/dataservice";
 const Index = props => (
     <Layout>
         <h1>Active Clients</h1>
-        {props.clients.active.map(lease => (
-            <p key={lease.id}>{lease.ip}</p>
+        {props.clients.active.map(client => (
+            <p key={client.id}>{client.ip}</p>
         ))}
         <h1>Active Leases</h1>
         {props.leases.active.map(lease => (
