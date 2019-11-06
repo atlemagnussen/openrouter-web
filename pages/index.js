@@ -32,9 +32,9 @@ const Index = props => (
             </p>
         ))}
         <h1>Inactive Clients</h1>
-        {props.clients.inactive.map(lease => (
-            <p key={lease.id}>
-                {lease.ip} - {lease.mac}
+        {props.clients.inactive.map(client => (
+            <p key={client.id}>
+                {client.ip} - {client.mac} - {client.name}
             </p>
         ))}
     </Layout>
