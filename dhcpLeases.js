@@ -4,6 +4,23 @@ const dev = process.env.NODE_ENV !== "production"; //true false
 const FILEPATH = dev ? "dhcpd.leases.example" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
+    async getAll(date) {
+        if (!date) {
+            date = new Date();
+        }
+        const allLeases = await this.readAllLeases();
+        const activeLeases = this.getActive(allLeases, date);
+        const activeLeasesDistinct = this.getDistinct(activeLeases);
+
+        const inactiveLeases = allLeases.filter(f => {
+            return !activeLeasesDistinct.find(x => x.mac === f.mac);
+        });
+        const inactiveLeasesDistinct = this.getDistinct(inactiveLeases);
+        return {
+            active: activeLeasesDistinct,
+            inactive: inactiveLeasesDistinct,
+        };
+    }
     async getLeasesByMac(mac) {
         const arr = await this.readAllLeases();
         const filter = arr.filter(f => {
@@ -46,23 +63,6 @@ class DhcpdLeases {
         }
         const activeLeases = await this.getActiveLeases(date);
         return this.getDistinct(activeLeases);
-    }
-    async getAll(date) {
-        if (!date) {
-            date = new Date();
-        }
-        const allLeases = await this.readAllLeases();
-        const activeLeases = this.getActive(allLeases, date);
-        const activeLeasesDistinct = this.getDistinct(activeLeases);
-
-        const inactiveLeases = allLeases.filter(f => {
-            return !activeLeasesDistinct.find(x => x.mac === f.mac);
-        });
-        const inactiveLeasesDistinct = this.getDistinct(inactiveLeases);
-        return {
-            active: activeLeasesDistinct,
-            inactive: inactiveLeasesDistinct,
-        };
     }
     getDistinct(leases) {
         const macsUnique = [...new Set(leases.map(x => x.mac))];

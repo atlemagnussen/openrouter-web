@@ -2,8 +2,8 @@ const express = require("express");
 const next = require("next");
 //const path = require("path");
 const expressRouter = express.Router; // make eslint shut up
-const leases = require("./dhcpdLeases.js");
-const clients = require("./dhcpClients.js");
+const leases = require("./dhcpLeases");
+const clients = require("./dhcpClients");
 const cors = require("./cors");
 
 const dev = process.env.NODE_ENV !== "production"; //true false

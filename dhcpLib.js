@@ -120,9 +120,7 @@ class DhcpLib {
     }
 
     getUuidDet(lease) {
-        const leaseString = `${lease.ip}${lease.mac}${
-            lease.host
-        }${lease.start.toISOString()}${lease.end.toISOString()}`;
+        const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`;
         return getUuid(leaseString);
     }
 
