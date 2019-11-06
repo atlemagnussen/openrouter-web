@@ -1,7 +1,7 @@
 const lib = require("./dhcpLib");
 const fileLib = require("./fileLib");
 const dev = process.env.NODE_ENV !== "production"; //true false
-const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
+const FILEPATH = dev ? "dhcpd.leases.example" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
     async getLeasesByMac(mac) {
