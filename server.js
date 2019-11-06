@@ -51,6 +51,17 @@ nextApp.prepare().then(() => {
             stdErrorHandling(res, err);
         }
     });
+    router.get("/config", async (req, res) => {
+        cors.addHeaders(req, res);
+        try {
+            log("get config");
+            const conf = await clients.readConfig();
+            res.json(conf);
+            log("got conf");
+        } catch (err) {
+            stdErrorHandling(res, err);
+        }
+    });
 
     router.get("/leases/:mac", async (req, res) => {
         cors.addHeaders(req, res);

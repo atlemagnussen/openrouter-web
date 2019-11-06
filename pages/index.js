@@ -1,9 +1,9 @@
 import React from "react";
 import Layout from "../components/Layout";
 import Link from "next/link";
-import dataService from "../services/dataservice";
+import combiner from "../services/combiner";
 import formatters from "../services/formatters";
-import dataservice from "../services/dataservice";
+import PropTypes from "prop-types";
 
 const Index = props => (
     <Layout>
@@ -40,14 +40,15 @@ const Index = props => (
     </Layout>
 );
 
-Index.getInitialProps = async function() {
-    const clients = await dataService.getAllClients();
-    const leases = await dataservice.getAllLeases();
+Index.getInitialProps = async () => {
+    const all = await combiner.getAll();
 
-    return {
-        clients,
-        leases,
-    };
+    return all;
+};
+
+Index.propTypes = {
+    "clients": PropTypes.array,
+    "leases": PropTypes.array,
 };
 
 export default Index;

@@ -16,6 +16,7 @@
         "indent": ["error", 4, { "SwitchCase": 1 }],
         "quotes": ["error", "double"],
         "semi": ["error", "always"],
-        "no-console": "off"
+        "no-console": "off",
+        "react/react-in-jsx-scope": "off"
     }
 }

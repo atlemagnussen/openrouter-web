@@ -11,6 +11,11 @@ class DataService {
             .then(res => res.json());
         return data;
     }
+    async getConfig() {
+        const data = await fetch(`${baseUrl}/api/config`)
+            .then(res => res.json());
+        return data;
+    }
     async getLeasesByMac(id) {
         const data = await fetch(`${baseUrl}/api/leases/${id}`)
             .then(res => res.json());
