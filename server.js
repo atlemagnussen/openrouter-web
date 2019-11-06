@@ -3,6 +3,7 @@ const next = require("next");
 //const path = require("path");
 const expressRouter = express.Router; // make eslint shut up
 const leases = require("./dhcpdLeases.js");
+const clients = require("./dhcpClients.js");
 const cors = require("./cors");
 
 const dev = process.env.NODE_ENV !== "production"; //true false
@@ -17,64 +18,61 @@ const stdErrorHandling = (res, err) => {
     res.status(500).send("Something broke!");
 };
 
+nextApp.prepare().then(() => {
+    const app = express();
+    console.log(`app.get("env")=${app.get("env")}`);
+    app.set("trust proxy", true);
+    app.set("trust proxy", "loopback");
 
-nextApp.prepare()
-    .then(() => {
-        const app = express();
-        console.log(`app.get("env")=${app.get("env")}`);
-        app.set("trust proxy", true);
-        app.set("trust proxy", "loopback");
-        
-        app.use(express.json());
-    
-        const router = expressRouter();
-        app.use("/api", router);
-    
-        router.get("/clients", async (req, res) => {
-            cors.addHeaders(req, res);
-            try {
-                log("get leases");
-                const allStd = await leases.getAllClients();
-                res.json(allStd);
-                log("got leases");
-            } catch (err) {
-                stdErrorHandling(res, err);
-            }
-        });
-        router.get("/leases", async (req, res) => {
-            cors.addHeaders(req, res);
-            try {
-                log("get leases");
-                const allStd = await leases.readAllLeases();
-                res.json(allStd);
-                log("got leases");
-            } catch (err) {
-                stdErrorHandling(res, err);
-            }
-        });
-        
-        router.get("/leases/:mac", async (req, res) => {
-            cors.addHeaders(req, res);
-            try {
-                log(`get leases for ${req.params.mac}`);
-                const data = await leases.getLeasesByMac(req.params.mac);
-                res.json(data);
-                log(`got leases for ${req.params.mac}`);
-            } catch (err) {
-                stdErrorHandling(res, err);
-            }
-        });
-        
-        app.get("*", (req, res) => {
-            return handle(req, res);
-        });
+    app.use(express.json());
 
-    
-        app.listen(port);
-        console.log(`Listening on port: ${port}`);
+    const router = expressRouter();
+    app.use("/api", router);
+
+    router.get("/clients", async (req, res) => {
+        cors.addHeaders(req, res);
+        try {
+            log("get leases");
+            const allStd = await clients.getAll();
+            res.json(allStd);
+            log("got leases");
+        } catch (err) {
+            stdErrorHandling(res, err);
+        }
+    });
+    router.get("/leases", async (req, res) => {
+        cors.addHeaders(req, res);
+        try {
+            log("get leases");
+            const allStd = await leases.getAll();
+            res.json(allStd);
+            log("got leases");
+        } catch (err) {
+            stdErrorHandling(res, err);
+        }
     });
 
-const log = (msg) => {
+    router.get("/leases/:mac", async (req, res) => {
+        cors.addHeaders(req, res);
+        try {
+            log(`get leases for ${req.params.mac}`);
+            const data = await leases.getLeasesByMac(req.params.mac);
+            res.json(data);
+            log(`got leases for ${req.params.mac}`);
+        } catch (err) {
+            stdErrorHandling(res, err);
+        }
+    });
+
+    app.get("*", (req, res) => {
+        return handle(req, res);
+    });
+
+    app.listen(port);
+    console.log(`Listening on port: ${port}`);
+});
+
+const log = msg => {
     const d = new Date().toTimeString();
     console.log(`${d} - ${msg}`);
 };

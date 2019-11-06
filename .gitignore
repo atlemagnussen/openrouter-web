@@ -1,3 +1,6 @@
+dhcpd.conf
+dhcpd.leases
+
 # Logs
 logs
 *.log

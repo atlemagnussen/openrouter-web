@@ -1,9 +1,9 @@
-const parse = require("./dhcpdLeases.js");
+const dhcp = require("./dhcpClients.js");
 
 const test = async () => {
-    const d = new Date(Date.UTC(2019, 6, 29, 19, 0));
+    // const d = new Date(Date.UTC(2019, 6, 29, 19, 0));
     // const res = await parse.getActiveLeases(d);
-    const res = await parse.getAllClients(d);
+    const res = await dhcp.readConfig();
     console.log(res);
 };
 

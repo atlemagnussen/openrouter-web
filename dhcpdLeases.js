@@ -1,25 +1,25 @@
-const fs = require("fs");
-const getUuid = require("uuid-by-string");
+const lib = require("dhcpLib");
+const fileLib = require("fileLib");
 const dev = process.env.NODE_ENV !== "production"; //true false
 const FILEPATH = dev ? "dhcpd.leases" : "/var/db/dhcpd.leases";
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
     async getLeasesByMac(mac) {
         const arr = await this.readAllLeases();
-        const filter = arr.filter((f) => {
+        const filter = arr.filter(f => {
             return f.mac === mac;
         });
         return filter;
     }
     async getLeasesByHost(host) {
         const arr = await this.readAllLeases();
-        const filter = arr.filter((f) => {
+        const filter = arr.filter(f => {
             return f.host === host;
         });
         return filter;
     }
     async readAllLeases() {
-        const raw = await this.readFile(FILEPATH);
+        const raw = await fileLib.readFile(FILEPATH);
         if (!raw) {
             throw new Error(`No content in filepath "${FILEPATH}"`);
         }
@@ -32,41 +32,41 @@ class DhcpdLeases {
     }
     getActiveLeases(allLeases, date) {
         console.log(`Fetch newer leases than ${date.toISOString()}`);
-        const active = allLeases.filter((f) => {
+        const active = allLeases.filter(f => {
             return f.end > date;
         });
-        const sorted = active.sort(function(a,b){
+        const sorted = active.sort(function(a, b) {
             return new Date(b.end) - new Date(a.end);
         });
         return sorted;
     }
-    async getActiveClients(date) {
+    async getActive(date) {
         if (!date) {
             date = new Date();
         }
         const activeLeases = await this.getActiveLeases(date);
         return this.getDistinct(activeLeases);
     }
-    async getAllClients(date) {
+    async getAll(date) {
         if (!date) {
             date = new Date();
         }
         const allLeases = await this.readAllLeases();
-        const activeLeases = this.getActiveLeases(allLeases, date);
-        const activeClients = this.getDistinct(activeLeases);
+        const activeLeases = this.getActive(allLeases, date);
+        const activeLeasesDistinct = this.getDistinct(activeLeases);
 
-        const inactiveLeases = allLeases.filter((f) => {
-            return !activeClients.find(x => x.mac === f.mac);
+        const inactiveLeases = allLeases.filter(f => {
+            return !activeLeasesDistinct.find(x => x.mac === f.mac);
         });
-        const inactiveClients = this.getDistinct(inactiveLeases);
+        const inactiveLeasesDistinct = this.getDistinct(inactiveLeases);
         return {
-            active: activeClients,
-            inactive: inactiveClients
+            active: activeLeasesDistinct,
+            inactive: inactiveLeasesDistinct,
         };
     }
     getDistinct(leases) {
         const macsUnique = [...new Set(leases.map(x => x.mac))];
-        return leases.filter((f) => {
+        return leases.filter(f => {
             if (macsUnique.includes(f.mac)) {
                 const index = macsUnique.indexOf(f.mac);
                 if (index !== -1) macsUnique.splice(index, 1);
@@ -74,49 +74,42 @@ class DhcpdLeases {
             }
         });
     }
-    readFile(filePath) {
-        return new Promise(resolve => {
-            fs.readFile(filePath, "utf8", (err, data) => {
-                if (err) throw err;
-                resolve(data);
-            });
-        });
-    }
+
     parseJson(lines) {
         const array = [];
         let current;
-        for(let i = 0; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             if (!current && line.includes("lease") && line.includes("{")) {
-                const ip = this.parseIp(line);
+                const ip = lib.parseLeaseIp(line);
                 current = {
-                    ip
+                    ip,
                 };
             }
             if (current) {
                 if (line.includes("starts")) {
-                    const start = this.parseDateTime(line);
+                    const start = lib.parseDateTime(line);
                     current.start = start;
                 }
                 if (line.includes("ends")) {
-                    const end = this.parseDateTime(line);
+                    const end = lib.parseDateTime(line);
                     current.end = end;
                 }
                 if (line.includes("hardware ethernet")) {
-                    const mac = this.parseMac(line);
+                    const mac = lib.parseMac(line);
                     current.mac = mac;
                 }
                 if (line.includes("uid")) {
-                    const uid = this.parseUid(line);
+                    const uid = lib.parseUid(line);
                     current.uid = uid;
                 }
-                if(line.includes("client-hostname")) {
-                    const host = this.parseHostName(line);
+                if (line.includes("client-hostname")) {
+                    const host = lib.parseHostName(line);
                     current.host = host;
                 }
                 if (line.includes("}")) {
                     const add = {
-                        id: this.getUuidDet(current)
+                        id: lib.getUuidDet(current),
                     };
                     array.push(Object.assign(add, current));
                     current = null;
@@ -124,42 +117,6 @@ class DhcpdLeases {
             }
         }
         return array;
-    }
-    parseHostName(line) {
-        return line.replace("client-hostname", "")
-            .replace(";", "")
-            .replace(/"/gi, "")
-            .trim();
-    }
-    parseUid(line) {
-        return line.replace("uid", "")
-            .replace(";", "")
-            .trim();
-    }
-    parseMac(line) {
-        return line.replace("hardware", "")
-            .replace("ethernet", "")
-            .replace(";", "")
-            .trim();
-    }
-    parseIp(line) {
-        return line.replace("lease", "").replace("{", "").trim();
-    }
-    parseDateTime(line) {
-        const trim = line.replace("starts", "").replace("ends", "").trim();
-        const year = trim.substring(2,6);
-        const month = trim.substring(7,9);
-        const monthInt = parseInt(month, 10);
-        const date = trim.substring(10,12);
-        const hour = trim.substring(13,15);
-        const min = trim.substring(16,18);
-        const sec = trim.substring(19,21);
-        const d = new Date(Date.UTC(year, monthInt - 1, date, hour, min, sec));
-        return d;
-    }
-    getUuidDet(lease) {
-        const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`;
-        return getUuid(leaseString);
     }
 }
 
