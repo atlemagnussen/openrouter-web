@@ -9,7 +9,7 @@ class DhcpdLeases {
             date = new Date();
         }
         const allLeases = await this.readAllLeases();
-        const activeLeasesDistinct = this.getActive(allLeases, date);
+        const activeLeasesDistinct = await this.getActive(allLeases, date);
 
         const inactiveLeases = allLeases.filter(f => {
             return !activeLeasesDistinct.find(x => x.mac === f.mac);
