@@ -9,8 +9,7 @@ class DhcpdLeases {
             date = new Date();
         }
         const allLeases = await this.readAllLeases();
-        const activeLeases = this.getActive(allLeases, date);
-        const activeLeasesDistinct = this.getDistinct(activeLeases);
+        const activeLeasesDistinct = this.getActive(allLeases, date);
 
         const inactiveLeases = allLeases.filter(f => {
             return !activeLeasesDistinct.find(x => x.mac === f.mac);
@@ -57,11 +56,11 @@ class DhcpdLeases {
         });
         return sorted;
     }
-    async getActive(date) {
+    async getActive(allLeases, date) {
         if (!date) {
             date = new Date();
         }
-        const activeLeases = await this.getActiveLeases(date);
+        const activeLeases = await this.getActiveLeases(allLeases, date);
         return this.getDistinct(activeLeases);
     }
     getDistinct(leases) {
