@@ -17,7 +17,7 @@ const Config = (props) => {
             ))}
             <h1>Static ips</h1>
             {props.hosts.map(host => (
-                <p key={host.ip}>{host.ip} - {host.mac} - {host.name}</p>
+                <p key={host.ip}>{host.ip} - {host.mac} - {host.host}</p>
             ))}
         </Layout>
     );

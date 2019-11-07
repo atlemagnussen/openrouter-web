@@ -67,7 +67,7 @@ class DhcpClients {
             }
             if (!currentHost && line.includes("host") && line.includes("{")) {
                 currentHost = {
-                    name: lib.parseHost(line),
+                    host: lib.parseHost(line),
                 };
             }
             if (currentHost) {
