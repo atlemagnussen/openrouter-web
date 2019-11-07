@@ -9,6 +9,7 @@ class Combiner {
         const ca = [];
         for (let i=0; i<clients.active.length; i++) {
             const a = clients.active[i];
+            if (a.ip === "192.168.1.1") continue;
             const find1 = config.hosts.find(h => {
                 return h.ip === a.ip;
             });
