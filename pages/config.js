@@ -7,7 +7,13 @@ const Config = (props) => {
         <Layout>
             <h1>Subnets</h1>
             {props.subnets.map(subnet => (
-                <p key={subnet.subnet}>{subnet.subnet} - {subnet.netmask}</p>
+                <p key={subnet.subnet}>
+                    subnet: {subnet.subnet} - netmask: {subnet.netmask}<br />
+                    default lease time: {subnet.defaultLeaseTime}<br />
+                    max lease time: {subnet.maxLeaseTime}<br />
+                    dhcp range: {subnet.range.from} - {subnet.range.to}<br />
+                    router: {subnet.routers[0]} dns server: {subnet.dns[0]}
+                </p>
             ))}
             <h1>Static ips</h1>
             {props.hosts.map(host => (
