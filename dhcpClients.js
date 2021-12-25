@@ -1,9 +1,12 @@
-const lib = require("./dhcpLib");
-const fileLib = require("./fileLib");
-const fping = require("./fping");
-const dev = process.env.NODE_ENV !== "production"; //true false
-const FILEPATH = dev ? "dhcpd.conf.example" : "/etc/dhcpd.conf";
-console.log(`FILEPATH=${FILEPATH}`);
+const lib = require("./dhcpLib")
+const fileLib = require("./fileLib")
+const fping = require("./fping")
+const dev = process.env.NODE_ENV !== "production"
+const os = process.platform
+const filePathOs = os == "linux" ? "/etc/dhcp/dhcpd.conf" : "/etc/dhcpd.conf"
+
+const FILEPATH = dev ? "dhcpd.conf.example" : filePathOs
+console.log(`FILEPATH=${FILEPATH}`)
 
 class DhcpClients {
     async getAll() {

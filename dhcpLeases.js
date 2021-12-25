@@ -1,7 +1,12 @@
-const lib = require("./dhcpLib");
-const fileLib = require("./fileLib");
-const dev = process.env.NODE_ENV !== "production"; //true false
-const FILEPATH = dev ? "dhcpd.leases.example" : "/var/db/dhcpd.leases";
+const lib = require("./dhcpLib")
+const fileLib = require("./fileLib")
+const dev = process.env.NODE_ENV !== "production"
+
+const os = process.platform
+const osFilePath = os == "linux" ? "/var/lib/dhcp/dhcpd.leases" : "/var/db/dhcpd.leases"
+
+//const FILEPATH = dev ? "dhcpd.leases.example" : osFilePath
+const FILEPATH = osFilePath
 console.log(`FILEPATH=${FILEPATH}`);
 class DhcpdLeases {
     async getAll(date) {
