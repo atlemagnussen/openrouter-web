@@ -1,13 +1,12 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	// import logo from './svelte-logo.svg';
+	import { page } from "$app/stores"
+	import logo from "./wifi-router.svg"
 </script>
 
 <header>
 	<div class="corner">
 		<a href="https://kit.svelte.dev">
-			<span>logo</span>
-			<!-- <img src={logo} alt="SvelteKit" /> -->
+			<img src={logo} alt="SvelteKit" />
 		</a>
 	</div>
 
