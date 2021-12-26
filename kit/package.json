@@ -1,6 +1,6 @@
 {
-  "name": "my-app",
-  "version": "0.0.1",
+  "name": "open-router",
+  "version": "0.1.0",
   "scripts": {
     "dev": "svelte-kit dev --port 4000",
     "build": "svelte-kit build",
