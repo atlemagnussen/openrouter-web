@@ -1,6 +1,7 @@
-import * as getUuid from "uuid-by-string"
+import getUuid from "uuid-by-string"
+import type { Lease, Range } from "../types/interfaces"
 
-export const parseSubnet = (line: string) => {
+export const parseSubnet = (line: string): string => {
     const words = trimAndSplitToWords(line)
     if (words.length > 1) {
         for (let i = 0; i < words.length; i++) {
@@ -12,7 +13,7 @@ export const parseSubnet = (line: string) => {
     throw new Error("no subnet to be found")
 }
 
-export const parseNetmask = (line: string) => {
+export const parseNetmask = (line: string): string => {
     const words = trimAndSplitToWords(line)
     if (words.length > 1) {
         for (let i = 0; i < words.length; i++) {
@@ -24,7 +25,7 @@ export const parseNetmask = (line: string) => {
     throw new Error("no netmask to be found")
 }
 
-export const parseRange = (line: string) => {
+export const parseRange = (line: string): Range => {
     const words = trimAndSplitToWords(line)
     if (words.length === 3 && words[0] === "range") {
         return {
@@ -35,7 +36,7 @@ export const parseRange = (line: string) => {
     throw new Error("no range to be found")
 }
 
-export const parseRouters = (line: string) => {
+export const parseRouters = (line: string): Array<string> => {
     const words = trimAndSplitToWords(line)
     if (words.length > 2 && words[0] === "option" && words[1] === "routers") {
         const arr = []
@@ -47,7 +48,7 @@ export const parseRouters = (line: string) => {
     throw new Error("no routers to be found")
 }
 
-export const parseDns = (line) => {
+export const parseDns = (line: string): Array<string> => {
     const words = trimAndSplitToWords(line)
     if (words.length > 2 && words[0] === "option" && words[1] === "domain-name-servers") {
         const arr = []
@@ -59,7 +60,7 @@ export const parseDns = (line) => {
     throw new Error("no dns server to be found")
 }
 
-export const parseLeaseTime = (line) => {
+export const parseLeaseTime = (line: string): string => {
     const words = trimAndSplitToWords(line)
     if (words.length === 2 && (words[0] === "default-lease-time" || words[0] === "max-lease-time")) {
         return words[1]
@@ -67,7 +68,7 @@ export const parseLeaseTime = (line) => {
     throw new Error("no lease time to be found")
 }
 
-export const parseHost = (line) => {
+export const parseHost = (line: string): string => {
     const words = trimAndSplitToWords(line)
     if (words.length > 1 && words[0] === "host") {
         return words[1]
@@ -75,7 +76,7 @@ export const parseHost = (line) => {
     throw new Error("no host to be found")
 }
 
-export const parseMac = (line) =>  {
+export const parseMac = (line: string): string => {
     return line
         .replace("hardware", "")
         .replace("ethernet", "")
@@ -83,7 +84,7 @@ export const parseMac = (line) =>  {
         .trim()
 }
 
-export const parseFixedIp = (line) => {
+export const parseFixedIp = (line: string): string => {
     const words = trimAndSplitToWords(line)
     if (words.length > 1 && words[0] === "fixed-address") {
         return words[1]
@@ -91,30 +92,34 @@ export const parseFixedIp = (line) => {
     throw new Error("no fixed address to be found")
 }
 
-export const parseDateTime = (line) => {
+export const parseDateTime = (line: string): Date => {
     const trim = line
         .replace("starts", "")
         .replace("ends", "")
         .trim()
-    const year = trim.substring(2, 6)
-    const month = trim.substring(7, 9)
-    const monthInt = parseInt(month, 10)
-    const date = trim.substring(10, 12)
-    const hour = trim.substring(13, 15)
-    const min = trim.substring(16, 18)
-    const sec = trim.substring(19, 21)
-    const d = new Date(Date.UTC(year, monthInt - 1, date, hour, min, sec))
+    const year = subStringParseInt(trim, 2, 6)
+    const month = subStringParseInt(trim, 7, 9)
+    const date = subStringParseInt(trim,10, 12)
+    const hour = subStringParseInt(trim, 13, 15)
+    const min = subStringParseInt(trim, 16, 18)
+    const sec = subStringParseInt(trim,19, 21)
+    const d = new Date(Date.UTC(year, month - 1, date, hour, min, sec))
     return d
 }
 
-export const parseLeaseIp = (line) => {
+const subStringParseInt = (line: string, start: number, end: number) => {
+    const numStr = line.substring(start, end)
+    return parseInt(numStr)
+}
+
+export const parseLeaseIp = (line: string): string => {
     return line
         .replace("lease", "")
         .replace("{", "")
         .trim()
 }
 
-export const parseHostName = (line) => {
+export const parseHostName = (line: string): string => {
     return line
         .replace("client-hostname", "")
         .replace(";", "")
@@ -122,19 +127,19 @@ export const parseHostName = (line) => {
         .trim()
 }
 
-export const parseUid = (line) => {
+export const parseUid = (line: string): string => {
     return line
         .replace("uid", "")
         .replace(";", "")
         .trim()
 }
 
-export const getUuidDet = (lease) => {
+export const getUuidDet = (lease: Lease): string => {
     const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`
     return getUuid(leaseString)
 }
 
-export const trimAndSplitToWords = (line) => {
+export const trimAndSplitToWords = (line: string): Array<string> => {
     if (!line) {
         throw new Error("nothing in line, critical!")
     }

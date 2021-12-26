@@ -1,19 +1,22 @@
 import * as lib  from "./dhcpLib"
 import { readFile } from "./fileLib"
-import type { Lease } from "../types/interfaces"
+import type { Lease, LeasesOverView } from "../types/interfaces"
 const dev = process.env.NODE_ENV !== "production"
 
 const os = process.platform
 const osFilePath = os == "linux" ? "/var/lib/dhcp/dhcpd.leases" : "/var/db/dhcpd.leases"
 
-//const FILEPATH = dev ? "dhcpd.leases.example" : osFilePath
-const FILEPATH = osFilePath
+const FILEPATH = dev ? "./examples/dhcpd.leases.example" : osFilePath
 console.log(`FILEPATH=${FILEPATH}`)
-export const getAll = async (date: Date) => {
+
+export const getLeasesOverview = async (date: Date): Promise<LeasesOverView> => {
+    console.log(`getLeasesOverview: date=${date.toISOString()}`)
     if (!date) {
         date = new Date()
     }
     const allLeases = await readAllLeases()
+    console.log(`allLeases count=${allLeases.length}`)
+
     const activeLeasesDistinct = await getActive(allLeases, date)
 
     const inactiveLeases = allLeases.filter(f => {
@@ -25,50 +28,54 @@ export const getAll = async (date: Date) => {
         inactive: inactiveLeasesDistinct,
     }
 }
-    const getLeasesByMac = async (mac) => {
-        const arr = await readAllLeases()
-        const filter = arr.filter(f => {
-            return f.mac === mac
-        })
-        return filter
-    }
-    const getLeasesByHost = async (host) => {
-        const arr = await readAllLeases()
-        const filter = arr.filter(f => {
-            return f.host === host
-        })
-        return filter
-    }
-    
-    const getActiveLeases = async (allLeases, date) => {
-        console.log(`Fetch newer leases than ${date.toISOString()}`)
-        const active = allLeases.filter(f => {
-            return f.end > date
-        })
-        const sorted = active.sort(function(a, b) {
-            return new Date(b.end) - new Date(a.end)
-        })
-        return sorted
-    }
-    const getActive = async (allLeases, date) => {
-        if (!date) {
-            date = new Date()
-        }
-        const activeLeases = await getActiveLeases(allLeases, date)
-        return getDistinct(activeLeases)
-    }
-    const getDistinct = (leases) => {
-        const macsUnique = [...new Set(leases.map(x => x.mac))]
-        return leases.filter(f => {
-            if (macsUnique.includes(f.mac)) {
-                const index = macsUnique.indexOf(f.mac)
-                if (index !== -1) macsUnique.splice(index, 1)
-                return true
-            }
-        })
-    }
+export const getLeasesByMac = async (mac: string): Promise<Lease[]> => {
+    const arr = await readAllLeases()
+    const filter = arr.filter(f => {
+        return f.mac === mac
+    })
+    return filter
+}
 
-const parseJson = (lines): Lease[] => {
+export const getLeasesByHost = async (host: string): Promise<Lease[]> => {
+    const arr = await readAllLeases()
+    const filter = arr.filter(f => {
+        return f.host === host
+    })
+    return filter
+}
+
+const getActiveLeases = async (allLeases: Lease[], date: Date) => {
+    console.log(`Fetch newer leases than ${date.toISOString()}`)
+    const active = allLeases.filter(f => {
+        return f.end > date
+    })
+    const sorted = active.sort(function(a, b) {
+        return b.end.getDate() - a.end.getDate()
+    })
+    return sorted
+}
+
+const getActive = async (allLeases: Lease[], date?: Date) => {
+    if (!date) {
+        date = new Date()
+    }
+    const activeLeases = await getActiveLeases(allLeases, date)
+    return getDistinct(activeLeases)
+}
+
+const getDistinct = (leases: Lease[]) => {
+    const macsUnique = [...new Set(leases.map(x => x.mac))]
+    return leases.filter(f => {
+        if (macsUnique.includes(f.mac)) {
+            const index = macsUnique.indexOf(f.mac)
+            if (index !== -1) macsUnique.splice(index, 1)
+            return true
+        }
+    })
+}
+
+const parseJson = (lines: string[]): Lease[] => {
+    console.log(`start parsing lines, length=${lines.length}`)
     const array = []
     let current: Lease
     for (let i = 0; i < lines.length; i++) {
@@ -76,7 +83,12 @@ const parseJson = (lines): Lease[] => {
         if (!current && line.includes("lease") && line.includes("{")) {
             const ip = lib.parseLeaseIp(line)
             current = {
+                uid: "",
                 ip,
+                mac: "",
+                start: new Date(-8640000000000000),
+                end:new Date(-8640000000000000),
+                host: ""
             }
         }
         if (current) {
@@ -121,6 +133,7 @@ const readAllLeases = async () => {
     if (lines.length < 3) {
         throw new Error(`Too small content in lease file, lines.length = ${lines.length}`)
     }
+    console.log(`total number of lines in leases file=${lines.length}`)
     const json = parseJson(lines)
     return json
 }

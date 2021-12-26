@@ -31,8 +31,10 @@
   "type": "module",
   "dependencies": {
     "@fontsource/fira-mono": "^4.5.0",
+    "@lit-labs/ssr": "^1.0.0",
     "@lukeed/uuid": "^2.0.0",
     "cookie": "^0.4.1",
+    "lit": "^2.0.2",
     "uuid-by-string": "^3.0.5"
   }
 }

@@ -1,0 +1,242 @@
+# The format of this file is documented in the dhcpd.leases(5) manual page.
+# This lease file was written by isc-dhcp-4.3.5
+
+# authoring-byte-order entry is generated, DO NOT DELETE
+authoring-byte-order little-endian;
+
+lease 192.168.1.129 {
+  starts 1 2021/12/20 19:33:15;
+  ends 1 2021/12/20 19:34:56;
+  tstp 1 2021/12/20 19:34:56;
+  cltt 1 2021/12/20 19:33:15;
+  binding state free;
+  hardware ethernet 50:e0:85:dc:9c:e5;
+  uid "\001P\340\205\334\234\345";
+}
+lease 192.168.1.106 {
+  starts 1 2021/12/20 19:31:08;
+  ends 1 2021/12/20 19:34:56;
+  tstp 1 2021/12/20 19:34:56;
+  cltt 1 2021/12/20 19:31:08;
+  binding state free;
+  hardware ethernet b8:27:eb:f3:95:64;
+  uid "\001\270'\353\363\225d";
+}
+lease 192.168.1.101 {
+  starts 1 2021/12/20 19:29:08;
+  ends 1 2021/12/20 19:34:59;
+  tstp 1 2021/12/20 19:34:59;
+  cltt 1 2021/12/20 19:29:08;
+  binding state free;
+  hardware ethernet 38:94:ed:0f:87:45;
+  uid "\0018\224\355\017\207E";
+}
+lease 192.168.1.102 {
+  starts 1 2021/12/20 19:31:08;
+  ends 1 2021/12/20 19:35:51;
+  tstp 1 2021/12/20 19:35:51;
+  cltt 1 2021/12/20 19:31:08;
+  binding state free;
+  hardware ethernet d8:12:65:07:ce:6d;
+  uid "\001\330\022e\007\316m";
+}
+lease 192.168.1.103 {
+  starts 1 2021/12/20 19:33:22;
+  ends 1 2021/12/20 19:36:46;
+  tstp 1 2021/12/20 19:36:46;
+  cltt 1 2021/12/20 19:33:22;
+  binding state free;
+  hardware ethernet b0:b9:8a:6a:39:21;
+  uid "\001\260\271\212j9!";
+}
+lease 192.168.1.131 {
+  starts 2 2021/12/21 06:44:50;
+  ends 2 2021/12/21 08:44:50;
+  tstp 2 2021/12/21 08:44:50;
+  cltt 2 2021/12/21 06:44:50;
+  binding state free;
+  hardware ethernet aa:5e:82:48:ec:2a;
+  uid "\001\252^\202H\354*";
+}
+lease 192.168.1.110 {
+  starts 3 2021/12/22 05:54:45;
+  ends 3 2021/12/22 07:54:45;
+  tstp 3 2021/12/22 07:54:45;
+  cltt 3 2021/12/22 06:12:13;
+  binding state free;
+  hardware ethernet 3c:a6:f6:14:f9:f8;
+  uid "\001<\246\366\024\371\370";
+}
+lease 192.168.1.138 {
+  starts 3 2021/12/22 09:22:24;
+  ends 3 2021/12/22 09:32:24;
+  tstp 3 2021/12/22 09:32:24;
+  cltt 3 2021/12/22 09:22:24;
+  binding state free;
+  hardware ethernet b8:08:cf:a7:3c:6c;
+  uid "\001\270\010\317\247<l";
+  set vendor-class-identifier = "dhcpcd-6.8.2:Linux-4.4.286-21004-g90921f1f9a15:x86_64:GenuineIntel";
+}
+lease 192.168.1.137 {
+  starts 3 2021/12/22 11:08:59;
+  ends 3 2021/12/22 11:18:59;
+  tstp 3 2021/12/22 11:18:59;
+  cltt 3 2021/12/22 11:08:59;
+  binding state free;
+  hardware ethernet b8:08:cf:a7:58:73;
+  uid "\001\270\010\317\247Xs";
+  set vendor-class-identifier = "dhcpcd-6.8.2:Linux-4.4.275-20726-g204ae1828356:x86_64:GenuineIntel";
+}
+lease 192.168.1.136 {
+  starts 3 2021/12/22 15:07:07;
+  ends 3 2021/12/22 17:07:07;
+  tstp 3 2021/12/22 17:07:07;
+  cltt 3 2021/12/22 15:23:30;
+  binding state free;
+  hardware ethernet 6e:cd:c4:14:10:a8;
+  uid "\001n\315\304\024\020\250";
+}
+lease 192.168.1.139 {
+  starts 3 2021/12/22 17:13:36;
+  ends 3 2021/12/22 17:23:36;
+  tstp 3 2021/12/22 17:23:36;
+  cltt 3 2021/12/22 17:13:36;
+  binding state free;
+  hardware ethernet 94:be:46:18:11:ca;
+  uid "\001\224\276F\030\021\312";
+  set vendor-class-identifier = "android-dhcp-10";
+}
+lease 192.168.1.140 {
+  starts 6 2021/12/25 18:34:19;
+  ends 6 2021/12/25 18:44:19;
+  tstp 6 2021/12/25 18:44:19;
+  cltt 6 2021/12/25 18:34:19;
+  binding state free;
+  hardware ethernet 98:29:a6:ca:6d:d4;
+  uid "\001\230)\246\312m\324";
+  set vendor-class-identifier = "android-dhcp-6.0.1";
+}
+lease 192.168.1.135 {
+  starts 0 2021/12/26 07:14:57;
+  ends 0 2021/12/26 07:24:57;
+  tstp 0 2021/12/26 07:24:57;
+  cltt 0 2021/12/26 07:14:57;
+  binding state free;
+  hardware ethernet fc:a6:67:29:08:e3;
+  uid "\001\374\246g)\010\343";
+  set vendor-class-identifier = "udhcp 1.28.3";
+}
+lease 192.168.1.107 {
+  starts 0 2021/12/26 07:59:21;
+  ends 0 2021/12/26 08:09:21;
+  tstp 0 2021/12/26 08:09:21;
+  cltt 0 2021/12/26 07:59:21;
+  binding state free;
+  hardware ethernet 90:3a:e6:15:b6:98;
+  uid "\001\220:\346\025\266\230";
+  set vendor-class-identifier = "udhcp 1.20.2";
+}
+lease 192.168.1.134 {
+  starts 0 2021/12/26 09:03:10;
+  ends 0 2021/12/26 11:03:10;
+  tstp 0 2021/12/26 11:03:10;
+  cltt 0 2021/12/26 09:27:23;
+  binding state free;
+  hardware ethernet 2e:d6:f1:c9:f7:43;
+  uid "\001.\326\361\311\367C";
+}
+lease 192.168.1.105 {
+  starts 0 2021/12/26 11:34:22;
+  ends 0 2021/12/26 11:44:22;
+  cltt 0 2021/12/26 11:34:22;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 00:22:61:46:5b:ac;
+  client-hostname "RADIO";
+}
+lease 192.168.1.128 {
+  starts 0 2021/12/26 11:34:28;
+  ends 0 2021/12/26 11:44:28;
+  cltt 0 2021/12/26 11:34:28;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet c4:ac:59:5f:ed:f1;
+  client-hostname "iSmartgate";
+}
+lease 192.168.1.130 {
+  starts 0 2021/12/26 11:36:08;
+  ends 0 2021/12/26 11:46:08;
+  cltt 0 2021/12/26 11:36:08;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet b0:e4:d5:42:04:7a;
+  uid "\001\260\344\325B\004z";
+  set vendor-class-identifier = "NestWifi";
+}
+lease 192.168.1.104 {
+  starts 0 2021/12/26 11:36:41;
+  ends 0 2021/12/26 11:46:41;
+  cltt 0 2021/12/26 11:36:41;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 2c:9f:fb:e6:36:ca;
+  client-hostname "connect";
+}
+lease 192.168.1.132 {
+  starts 0 2021/12/26 11:36:49;
+  ends 0 2021/12/26 11:46:49;
+  cltt 0 2021/12/26 11:36:49;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 1a:24:77:a4:11:fd;
+  uid "\001\032$w\244\021\375";
+  set vendor-class-identifier = "android-dhcp-10";
+  client-hostname "Galaxy-S9";
+}
+lease 192.168.1.141 {
+  starts 0 2021/12/26 10:32:42;
+  ends 0 2021/12/26 12:32:42;
+  cltt 0 2021/12/26 10:32:42;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 7e:4b:49:71:5b:bd;
+  uid "\001~KIq[\275";
+  client-hostname "Cecilies-iPhone";
+}
+lease 192.168.1.133 {
+  starts 0 2021/12/26 10:56:54;
+  ends 0 2021/12/26 12:56:54;
+  cltt 0 2021/12/26 10:56:54;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet aa:33:d4:a4:eb:23;
+  uid "\001\2523\324\244\353#";
+}
+lease 192.168.1.109 {
+  starts 0 2021/12/26 11:01:00;
+  ends 0 2021/12/26 13:01:00;
+  cltt 0 2021/12/26 11:01:00;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet 50:de:06:a5:0e:b4;
+  uid "\001P\336\006\245\016\264";
+  client-hostname "kjellerstua";
+}
+lease 192.168.1.108 {
+  starts 0 2021/12/26 11:30:06;
+  ends 0 2021/12/26 13:30:06;
+  cltt 0 2021/12/26 11:30:06;
+  binding state active;
+  next binding state free;
+  rewind binding state free;
+  hardware ethernet ea:8b:87:38:ad:b6;
+  uid "\001\352\213\2078\255\266";
+}
