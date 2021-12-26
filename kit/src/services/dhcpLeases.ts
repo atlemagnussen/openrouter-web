@@ -9,7 +9,7 @@ const osFilePath = os == "linux" ? "/var/lib/dhcp/dhcpd.leases" : "/var/db/dhcpd
 const FILEPATH = dev ? "./examples/dhcpd.leases.example" : osFilePath
 console.log(`FILEPATH=${FILEPATH}`)
 
-export const getLeasesOverview = async (date: Date): Promise<LeasesOverView> => {
+export const getLeasesOverview = async (date: Date): Promise<LeasesOverView<Lease>> => {
     console.log(`getLeasesOverview: date=${date.toISOString()}`)
     if (!date) {
         date = new Date()
@@ -50,7 +50,7 @@ const getActiveLeases = async (allLeases: Lease[], date: Date) => {
         return f.end > date
     })
     const sorted = active.sort(function(a, b) {
-        return b.end.getDate() - a.end.getDate()
+        return (b.end as Date).getDate() - (a.end as Date).getDate()
     })
     return sorted
 }
