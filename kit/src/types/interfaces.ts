@@ -3,11 +3,11 @@ export interface IpAddress {
     ip: string
 }
 export interface Host extends IpAddress {
+    host: string
     mac: string
 }
 export interface Lease extends Host {
     uid: string
-    host: string
     start: Date | string
     end: Date | string
 }

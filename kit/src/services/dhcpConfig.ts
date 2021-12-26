@@ -1,12 +1,12 @@
 
 import * as lib from "./dhcpLib"
 import { readFile }from "./fileLib"
-import type { DhcpConfig, Network } from "src/types/interfaces"
+import type { DhcpConfig, Host, Network } from "src/types/interfaces"
 const dev = process.env.NODE_ENV !== "production"
 const os = process.platform
 const filePathOs = os == "linux" ? "/etc/dhcp/dhcpd.conf" : "/etc/dhcpd.conf"
 
-const FILEPATH = dev ? "dhcpd.conf.example" : filePathOs
+const FILEPATH = dev ? "./examples/dhcpd.conf.example" : filePathOs
 console.log(`FILEPATH=${FILEPATH}`)
 
 
@@ -30,7 +30,7 @@ const parseConfigJson = (lines: string[]) => {
         hosts: [],
     }
     let currentSubnet: Network
-    let currentHost
+    let currentHost: Host
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
         if (line.startsWith("#")) continue
@@ -51,6 +51,8 @@ const parseConfigJson = (lines: string[]) => {
         if (!currentHost && line.includes("host") && line.includes("{")) {
             currentHost = {
                 host: lib.parseHost(line),
+                ip: "",
+                mac: ""
             }
         }
         if (currentHost) {

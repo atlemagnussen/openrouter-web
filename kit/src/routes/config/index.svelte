@@ -1,19 +1,14 @@
 <script context="module" lang="ts">
 	import type { Load } from "@sveltejs/kit"
-
 	export const load: Load = async ({ fetch }) => {
 		const res = await fetch("/config.json")
-
 		if (res.ok) {
 			const config = await res.json()
-
 			return {
 				props: { config }
-			};
+			}
 		}
-
 		const { message } = await res.json()
-
 		return {
 			error: new Error(message)
 		}
@@ -21,7 +16,6 @@
 </script>
 
 <script lang="ts">
-	import DateTimeViewer from "$lib/Components/Formatters/DateTimeViewer.svelte"
 	import type { DhcpConfig, LeasesOverView } from "../../types/interfaces"
 	export let config: DhcpConfig = {
 		hosts: [],
@@ -33,35 +27,51 @@
 <svelte:head>
 	<title>Leases</title>
 </svelte:head>
-<h1> Active Leases</h1>
-<div class="leases">
+<h1> Config</h1>
+<div class="config">
 	{#each config.subnets as sub}
 		<div class="subnet">
 			<p>
 				<label for="subnet">Subnet</label>
 				<span id="subnet">{sub.subnet}</span>
+				<label for="subnet">Netmask</label>
+				<span id="subnet">{sub.netmask}</span>
 			</p>
-			<DateTimeViewer date={act.start}></DateTimeViewer>
+			<p>
+				<label for="range">Range from</label>
+				<span id="range">{sub.range.from}</span>
+				<label for="range">to</label>
+				<span id="range">{sub.range.to}</span>
+			</p>
+			<p>
+				<label for="routers">Routers</label>
+				<span id="routers">{sub.routers.join(" ")}</span>
+			</p>
+			<p>
+				<label for="dns">DNS servers</label>
+				<span id="dns">{sub.dns.join(" ")}</span>
+			</p>
+			<p>
+				<label for="leasetime">LeaseTime default</label>
+				<span id="routers">{sub.defaultLeaseTime}</span>
+				<label for="leasetime">Max</label>
+				<span id="routers">{sub.maxLeaseTime}</span>
+			</p>
 		</div>
-	{/each}
-</div>
-<h1> Inactive Leases</h1>
-<div class="leases">
-	{#each leasesOverview.inactive as act}
-		<div class="lease">
-			{act.host} - {act.ip} - {act.mac} - 
-			<DateTimeViewer date={act.start}></DateTimeViewer>
+		<div class="hosts">
+			{#each config.hosts as host}
+				<p>
+					{host.ip} {host.mac} {host.host}
+				</p>
+			{/each}	
 		</div>
 	{/each}
 </div>
 
 <style>
-	.leases {
+	.config {
 		display: flex;
 		flex-direction: column;
 	}
-	.lease {
-		width: 100%;
-		line-height: 1;
-	}
+	
 </style>
