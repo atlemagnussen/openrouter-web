@@ -1,5 +1,5 @@
 export interface IpAddress {
-    id: number
+    id?: number
     ip: string
 }
 export interface Host extends IpAddress {
@@ -33,6 +33,7 @@ export interface Network {
 }
 
 export interface DhcpConfig {
+    configFilePath?: string
     subnets: Network[]
     hosts: Host[]
 }

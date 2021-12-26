@@ -1,7 +1,7 @@
-import fping from "./fping"
+
 import * as lib from "./dhcpLib"
 import { readFile }from "./fileLib"
-import type { DhcpConfig, IpAddress, LeasesOverView, Network } from "src/types/interfaces"
+import type { DhcpConfig, Network } from "src/types/interfaces"
 const dev = process.env.NODE_ENV !== "production"
 const os = process.platform
 const filePathOs = os == "linux" ? "/etc/dhcp/dhcpd.conf" : "/etc/dhcpd.conf"
@@ -10,36 +10,7 @@ const FILEPATH = dev ? "dhcpd.conf.example" : filePathOs
 console.log(`FILEPATH=${FILEPATH}`)
 
 
-export const getAllDhcp = async (): Promise<LeasesOverView<IpAddress>> => {
-    const config = await readConfig()
-    const active = await getActive(config)
-    let id = 0
-    const activeIps: IpAddress[] = active.map(ip => {
-        id += 1
-        return {
-            id,
-            ip,
-        }
-    })
-    const inactiveHosts = config.hosts.filter(f => {
-        return !activeIps.find(x => x.ip === f.ip)
-    })
-    const inactive: IpAddress[] = inactiveHosts.map(i => {
-        id += 1
-        i.id = id
-        return i
-    })
-    return {
-        activeIps,
-        inactive,
-    }
-}
-const getActive = async (conf: DhcpConfig) => {
-    const net = conf.subnets[0]
-    const active = await fping.pingRange(net.subnet, net.netmask)
-    return active
-}
-const readConfig = async () => {
+export const readDhcpConfig = async (): Promise<DhcpConfig> => {
     const raw = await readFile(FILEPATH)
     if (!raw) {
         throw new Error(`No content in filepath "${FILEPATH}"`)
@@ -48,8 +19,9 @@ const readConfig = async () => {
     if (lines.length < 3) {
         throw new Error(`Too small content in lease file, lines.length = ${lines.length}`)
     }
-    const json = parseConfigJson(lines)
-    return json
+    const config = parseConfigJson(lines)
+    config.configFilePath = FILEPATH
+    return config
 }
 
 const parseConfigJson = (lines: string[]) => {

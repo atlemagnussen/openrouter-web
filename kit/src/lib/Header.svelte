@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import logo from './svelte-logo.svg';
+	// import logo from './svelte-logo.svg';
 </script>
 
 <header>
 	<div class="corner">
 		<a href="https://kit.svelte.dev">
-			<img src={logo} alt="SvelteKit" />
+			<span>logo</span>
+			<!-- <img src={logo} alt="SvelteKit" /> -->
 		</a>
 	</div>
 
@@ -17,6 +18,7 @@
 		<ul>
 			<li class:active={$page.path === '/'}><a sveltekit:prefetch href="/">Home</a></li>
 			<li class:active={$page.path === '/leases'}><a sveltekit:prefetch href="/leases">Leases</a></li>
+			<li class:active={$page.path === '/config'}><a sveltekit:prefetch href="/config">Config</a></li>
 			<li class:active={$page.path === '/about'}><a sveltekit:prefetch href="/about">Static ips</a></li>
 		</ul>
 		<svg viewBox="0 0 2 3" aria-hidden="true">
