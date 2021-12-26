@@ -1,5 +1,6 @@
 import fping from "./fping"
 import * as lib from "./dhcpLib"
+import { readFile }from "./fileLib"
 const dev = process.env.NODE_ENV !== "production"
 const os = process.platform
 const filePathOs = os == "linux" ? "/etc/dhcp/dhcpd.conf" : "/etc/dhcpd.conf"
@@ -38,7 +39,7 @@ class DhcpClients {
         return active
     }
     async readConfig() {
-        const raw = await fileLib.readFile(FILEPATH)
+        const raw = await readFile(FILEPATH)
         if (!raw) {
             throw new Error(`No content in filepath "${FILEPATH}"`)
         }
