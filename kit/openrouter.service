@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenRouter
+
+[Service]
+ExecStart=/home/atle/.nvm/versions/node/v16.13.1/bin/node /home/atle/dev/openrouter-web/kit/build/index.js
+Restart=always
+RestartSec=10
+SyslogIdentifier=Openrouter
+Environment=NODE_ENV=production PORT=4000
+
+[Install]
+WantedBy=multi-user.target
