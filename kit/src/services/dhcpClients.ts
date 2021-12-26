@@ -1,4 +1,5 @@
-
+import fping from "./fping"
+import * as lib from "./dhcpLib"
 const dev = process.env.NODE_ENV !== "production"
 const os = process.platform
 const filePathOs = os == "linux" ? "/etc/dhcp/dhcpd.conf" : "/etc/dhcpd.conf"
@@ -8,68 +9,68 @@ console.log(`FILEPATH=${FILEPATH}`)
 
 class DhcpClients {
     async getAll() {
-        const config = await this.readConfig();
-        const activeIps = await this.getActive(config);
-        let id = 0;
+        const config = await this.readConfig()
+        const activeIps = await this.getActive(config)
+        let id = 0
         const active = activeIps.map(ip => {
             id += 1;
             return {
                 id,
                 ip,
-            };
-        });
+            }
+        })
         const inactiveHosts = config.hosts.filter(f => {
-            return !active.find(x => x.ip === f.ip);
-        });
+            return !active.find(x => x.ip === f.ip)
+        })
         const inactive = inactiveHosts.map(i => {
-            id += 1;
-            i.id = id;
-            return i;
-        });
+            id += 1
+            i.id = id
+            return i
+        })
         return {
             active,
             inactive,
-        };
+        }
     }
     async getActive(conf) {
-        const net = conf.subnets[0];
-        const active = await fping.pingRange(net.subnet, net.netmask);
-        return active;
+        const net = conf.subnets[0]
+        const active = await fping.pingRange(net.subnet, net.netmask)
+        return active
     }
     async readConfig() {
-        const raw = await fileLib.readFile(FILEPATH);
+        const raw = await fileLib.readFile(FILEPATH)
         if (!raw) {
-            throw new Error(`No content in filepath "${FILEPATH}"`);
+            throw new Error(`No content in filepath "${FILEPATH}"`)
         }
-        const lines = raw.split("\n");
+        const lines = raw.split("\n")
         if (lines.length < 3) {
-            throw new Error(`Too small content in lease file, lines.length = ${lines.length}`);
+            throw new Error(`Too small content in lease file, lines.length = ${lines.length}`)
         }
-        const json = this.parseJson(lines);
-        return json;
+        const json = this.parseJson(lines)
+        return json
     }
 
     parseJson(lines) {
         let retval = {
             subnets: [],
             hosts: [],
-        };
-        let currentSubnet, currentHost;
+        }
+        let currentSubnet, currentHost
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.startsWith("#")) continue;
+            const line = lines[i]
+            if (line.startsWith("#")) continue
             if (!currentSubnet && line.includes("subnet") && line.includes("{")) {
                 currentSubnet = {
                     subnet: lib.parseSubnet(line),
                     netmask: lib.parseNetmask(line),
                     routers: [],
                     dns: [],
-                };
+                }
             }
             if (!currentHost && line.includes("host") && line.includes("{")) {
                 currentHost = {
                     host: lib.parseHost(line),
-                };
+                }
             }
             if (currentHost) {
                 if (line.includes("hardware")) {
@@ -98,19 +99,19 @@ class DhcpClients {
             }
             if (line.includes("}")) {
                 if (currentSubnet) {
-                    const clone = Object.assign({}, currentSubnet);
-                    retval.subnets.push(clone);
-                    currentSubnet = null;
+                    const clone = Object.assign({}, currentSubnet)
+                    retval.subnets.push(clone)
+                    currentSubnet = null
                 }
                 if (currentHost) {
-                    const clone = Object.assign({}, currentHost);
-                    retval.hosts.push(clone);
-                    currentHost = null;
+                    const clone = Object.assign({}, currentHost)
+                    retval.hosts.push(clone)
+                    currentHost = null
                 }
             }
         }
-        return retval;
+        return retval
     }
 }
 
-module.exports = new DhcpClients();
+export default new DhcpClients()
