@@ -1,0 +1,19 @@
+:root {
+	--white-pure: #ffffff;
+    --white-sky: rgba(255, 255, 255, 0.7);
+
+    --gray-strong: #444444;
+	--gray-stone: #b9c6d2;
+	--gray-sky: #d0dde9;
+	--gray-light: #edf0f8;
+	
+    --orange-sharp: #ff3e00;
+
+    --red-morning: #c03a28de;
+    --red-light: #fa7da7;
+
+    --blue-light: #7140f8;
+    --blue-stark: #1111ee;
+
+	--black: rgba(0, 0, 0, 0.7);
+}
