@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts">
-	import LeaseList from "$lib/LeaseList.svelte"
+	import LeaseList from "$lib/HostList.svelte"
 	import type { Lease, LeasesOverview, OverView } from "../../types/interfaces"
 	export let leasesOverview: LeasesOverview = {
 		configFilePath: "",
@@ -56,9 +56,5 @@
 	.leases {
 		display: flex;
 		flex-direction: column;
-	}
-	.lease {
-		width: 100%;
-		line-height: 1;
 	}
 </style>

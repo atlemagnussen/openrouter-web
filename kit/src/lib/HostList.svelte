@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Lease } from "src/types/interfaces"
+    import type { Host, Lease } from "src/types/interfaces"
     import DateTimeViewer from "$lib/Components/Formatters/DateTimeViewer.svelte"
     export let list: Lease[] = []
 </script>
@@ -9,8 +9,7 @@
         <th>Ip</th>
         <th>Mac</th>
         <th>Name</th>
-        <th>start</th>
-        <th>end</th>
+        <th></th>
     </thead>
     <tbody>
         {#each list as host}
@@ -19,10 +18,10 @@
             <td>{host.mac}</td>
             <td>{host.name}</td>
             <td>
-                <DateTimeViewer date={host.start} />
-            </td>
-            <td>
-                <DateTimeViewer date={host.end} />
+                {#if host.start}
+                    <DateTimeViewer date={host.start} />
+                    <DateTimeViewer date={host.end} />
+                {/if}
             </td>
         </tr>
         {/each}

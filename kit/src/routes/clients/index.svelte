@@ -18,11 +18,11 @@
 
 <script lang="ts">
 	import type { Host, OverView } from "../../types/interfaces"
+	import HostList from "$lib/HostList.svelte"
 	export let overview: OverView<Host> = {
 		active: [],
 		inactive: []
 	}
-
 </script>
 
 <svelte:head>
@@ -30,15 +30,7 @@
 </svelte:head>
 <h1>Clients</h1>
 <div class="config">
-	
-	<div class="hosts">
-		{#each overview.active as host}
-			<p>
-				{host.ip} {host.mac} {host.name}
-			</p>
-		{/each}	
-	</div>
-
+	<HostList list={overview.active} />
 </div>
 
 <style>

@@ -8,7 +8,7 @@
 </style>
 
 {#if !date}
-	<span>N/A</span>
+	<small>N/A</small>
 {:else}
-	<span>{formatterNoDateAndTimeHardCode(date)}</span>
+	<small>{formatterNoDateAndTimeHardCode(date)}</small>
 {/if}

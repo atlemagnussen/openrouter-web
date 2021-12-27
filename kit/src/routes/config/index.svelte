@@ -17,6 +17,7 @@
 
 <script lang="ts">
 	import type { DhcpConfig } from "../../types/interfaces"
+	import HostList from "$lib/HostList.svelte"
 	export let config: DhcpConfig = {
 		hosts: [],
 		subnets: []
@@ -63,11 +64,7 @@
 			</p>
 		</div>
 		<div class="hosts">
-			{#each config.hosts as host}
-				<p>
-					{host.ip} {host.mac} {host.name}
-				</p>
-			{/each}	
+			<HostList list={config.hosts} />
 		</div>
 	{/each}
 </div>

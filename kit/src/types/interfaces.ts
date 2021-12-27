@@ -7,9 +7,9 @@ export interface Host extends IpAddress {
     mac: string
 }
 export interface Lease extends Host {
-    uid: string
-    start: Date | string
-    end: Date | string
+    uid?: string
+    start?: Date | string
+    end?: Date | string
 }
 
 export interface Range {
