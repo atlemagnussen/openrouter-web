@@ -66,14 +66,18 @@ const getActive = async (allLeases: Lease[], date?: Date) => {
 }
 
 const getDistinct = (leases: Lease[]) => {
-    const macsUnique = [...new Set(leases.map(x => x.mac))]
-    return leases.filter(f => {
-        if (macsUnique.includes(f.mac)) {
-            const index = macsUnique.indexOf(f.mac)
-            if (index !== -1) macsUnique.splice(index, 1)
-            return true
-        }
+    //const macsUnique = [...new Set(leases.map(x => x.mac))]
+    const recucer = (list: Lease[], currentValue: Lease) => {
+        if (!list.some(l => l.mac == currentValue.mac))
+            list.push(currentValue)
+        return list
+    }
+    const dist = leases.reduce(recucer, [])
+
+    const sorted = dist.sort(function(a, b) {
+        return (b.end as Date).getDate() - (a.end as Date).getDate()
     })
+    return sorted
 }
 
 const parseJson = (lines: string[]): Lease[] => {

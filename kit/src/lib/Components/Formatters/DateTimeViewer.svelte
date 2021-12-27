@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { formatterNoDateAndTime } from "./DateTime"
+	import { formatterNoDateAndTimeHardCode } from "./DateTime"
     export let date: Date | string
+
 </script>
 <style>
 	
@@ -9,5 +10,5 @@
 {#if !date}
 	<span>N/A</span>
 {:else}
-	<span>{formatterNoDateAndTime(date)}</span>
+	<span>{formatterNoDateAndTimeHardCode(date)}</span>
 {/if}

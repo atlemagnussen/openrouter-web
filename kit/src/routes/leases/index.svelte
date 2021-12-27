@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts">
-	import DateTimeViewer from "$lib/Components/Formatters/DateTimeViewer.svelte"
+	import LeaseList from "$lib/LeaseList.svelte"
 	import type { Lease, LeasesOverview, OverView } from "../../types/interfaces"
 	export let leasesOverview: LeasesOverview = {
 		configFilePath: "",
@@ -41,21 +41,11 @@
 </div>
 <h2>Active Leases</h2>
 <div class="leases">
-	{#each leasesOverview.active as act (act.uid)}
-		<div class="lease">
-			{act.name} - {act.ip} - {act.mac} - 
-			<DateTimeViewer date={act.start}></DateTimeViewer>
-		</div>
-	{/each}
+	<LeaseList list={leasesOverview.active} />
 </div>
 <h2> Inactive Leases</h2>
 <div class="leases">
-	{#each leasesOverview.inactive as act}
-		<div class="lease">
-			{act.name} - {act.ip} - {act.mac} - 
-			<DateTimeViewer date={act.start}></DateTimeViewer>
-		</div>
-	{/each}
+	<LeaseList list={leasesOverview.inactive} />
 </div>
 
 <style>
