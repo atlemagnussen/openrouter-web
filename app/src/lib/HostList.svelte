@@ -3,7 +3,12 @@
     import DateTimeViewer from "$lib/Components/Formatters/DateTimeViewer.svelte"
     export let list: Lease[] = []
 </script>
-
+<style>
+    th, td {
+        padding: 5px;
+        background-color:none;
+    }
+</style>
 <table>
     <thead>
         <th>Ip</th>
