@@ -12,5 +12,12 @@ Should work on both Linux and BSD
 
 ```sh
 npm run build
-use systemd using `openrouter.service` file
+```
+
+then use systemd using `openrouter.service` file  
+
+or use bash script:
+
+```sh
+./start-prod.sh
 ```
