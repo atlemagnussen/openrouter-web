@@ -34,9 +34,12 @@
 <svelte:head>
 	<title>Leases</title>
 </svelte:head>
-<h1> Active Leases</h1>
-<label for="configfile">Config file</label>
-<span id="configfile">{leasesOverview.configFilePath}</span>
+<h1>Leases</h1>
+<div class="config">
+	<label for="configfile">Config file:</label>
+	<code id="configfile"><i>{leasesOverview.configFilePath}</i></code>
+</div>
+<h2>Active Leases</h2>
 <div class="leases">
 	{#each leasesOverview.active as act (act.uid)}
 		<div class="lease">
@@ -45,7 +48,7 @@
 		</div>
 	{/each}
 </div>
-<h1> Inactive Leases</h1>
+<h2> Inactive Leases</h2>
 <div class="leases">
 	{#each leasesOverview.inactive as act}
 		<div class="lease">
@@ -56,6 +59,10 @@
 </div>
 
 <style>
+	.config {
+		padding: 0.3rem;
+		background: var(--secondary-color);
+	}
 	.leases {
 		display: flex;
 		flex-direction: column;

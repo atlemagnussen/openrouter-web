@@ -28,9 +28,11 @@
 	<title>Leases</title>
 </svelte:head>
 <h1> Config</h1>
+<div class="configfile">
+	<label for="configfile">Config file:</label>
+	<code id="configfile"><i>{config.configFilePath}</i></code>
+</div>
 <div class="config">
-	<label for="configfile">Config file</label>
-	<span id="configfile">{config.configFilePath}</span>
 	{#each config.subnets as sub}
 		<div class="subnet">
 			<p>
@@ -71,6 +73,10 @@
 </div>
 
 <style>
+	.configfile {
+		padding: 0.3rem;
+		background: var(--secondary-color);
+	}
 	.config {
 		display: flex;
 		flex-direction: column;
