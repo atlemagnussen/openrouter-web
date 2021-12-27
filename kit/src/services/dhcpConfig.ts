@@ -50,7 +50,7 @@ const parseConfigJson = (lines: string[]) => {
         }
         if (!currentHost && line.includes("host") && line.includes("{")) {
             currentHost = {
-                host: lib.parseHost(line),
+                name: lib.parseHost(line),
                 ip: "",
                 mac: ""
             }

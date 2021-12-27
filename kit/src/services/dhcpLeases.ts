@@ -1,6 +1,7 @@
 import * as lib  from "./dhcpLib"
 import { readFile } from "./fileLib"
-import type { Lease, LeasesOverView } from "../types/interfaces"
+import type { Lease, LeasesOverview, OverView } from "../types/interfaces"
+import { FILE } from "dns"
 const dev = process.env.NODE_ENV !== "production"
 
 const os = process.platform
@@ -9,7 +10,7 @@ const osFilePath = os == "linux" ? "/var/lib/dhcp/dhcpd.leases" : "/var/db/dhcpd
 const FILEPATH = dev ? "./examples/dhcpd.leases.example" : osFilePath
 console.log(`FILEPATH=${FILEPATH}`)
 
-export const getLeasesOverview = async (date: Date): Promise<LeasesOverView<Lease>> => {
+export const getLeasesOverview = async (date: Date): Promise<LeasesOverview> => {
     console.log(`getLeasesOverview: date=${date.toISOString()}`)
     if (!date) {
         date = new Date()
@@ -24,6 +25,7 @@ export const getLeasesOverview = async (date: Date): Promise<LeasesOverView<Leas
     })
     const inactiveLeasesDistinct = getDistinct(inactiveLeases)
     return {
+        configFilePath: FILEPATH,
         active: activeLeasesDistinct,
         inactive: inactiveLeasesDistinct,
     }
@@ -39,7 +41,7 @@ export const getLeasesByMac = async (mac: string): Promise<Lease[]> => {
 export const getLeasesByHost = async (host: string): Promise<Lease[]> => {
     const arr = await readAllLeases()
     const filter = arr.filter(f => {
-        return f.host === host
+        return f.name === host
     })
     return filter
 }
@@ -88,7 +90,7 @@ const parseJson = (lines: string[]): Lease[] => {
                 mac: "",
                 start: new Date(-8640000000000000),
                 end:new Date(-8640000000000000),
-                host: ""
+                name: ""
             }
         }
         if (current) {
@@ -110,7 +112,7 @@ const parseJson = (lines: string[]): Lease[] => {
             }
             if (line.includes("client-hostname")) {
                 const host = lib.parseHostName(line)
-                current.host = host
+                current.name = host
             }
             if (line.includes("}")) {
                 const add = {

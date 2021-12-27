@@ -22,9 +22,9 @@
 
 <script lang="ts">
 	import DateTimeViewer from "$lib/Components/Formatters/DateTimeViewer.svelte"
-import { action_destroyer } from "svelte/internal"
-	import type { LeasesOverView } from "../../types/interfaces"
-	export let leasesOverview: LeasesOverView = {
+	import type { Lease, LeasesOverview, OverView } from "../../types/interfaces"
+	export let leasesOverview: LeasesOverview = {
+		configFilePath: "",
 		active: [],
 		inactive: []
 	}
@@ -35,10 +35,12 @@ import { action_destroyer } from "svelte/internal"
 	<title>Leases</title>
 </svelte:head>
 <h1> Active Leases</h1>
+<label for="configfile">Config file</label>
+<span id="configfile">{leasesOverview.configFilePath}</span>
 <div class="leases">
 	{#each leasesOverview.active as act (act.uid)}
 		<div class="lease">
-			{act.host} - {act.ip} - {act.mac} - 
+			{act.name} - {act.ip} - {act.mac} - 
 			<DateTimeViewer date={act.start}></DateTimeViewer>
 		</div>
 	{/each}
@@ -47,7 +49,7 @@ import { action_destroyer } from "svelte/internal"
 <div class="leases">
 	{#each leasesOverview.inactive as act}
 		<div class="lease">
-			{act.host} - {act.ip} - {act.mac} - 
+			{act.name} - {act.ip} - {act.mac} - 
 			<DateTimeViewer date={act.start}></DateTimeViewer>
 		</div>
 	{/each}

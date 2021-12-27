@@ -3,7 +3,7 @@ export interface IpAddress {
     ip: string
 }
 export interface Host extends IpAddress {
-    host: string
+    name: string
     mac: string
 }
 export interface Lease extends Host {
@@ -17,9 +17,13 @@ export interface Range {
     to: string
 }
 
-export interface LeasesOverView<T> {
+export interface OverView<T extends IpAddress> {
     active: T[]
     inactive: T[]
+}
+
+export interface LeasesOverview extends OverView<Lease> {
+    configFilePath?: string
 }
 
 export interface Network {

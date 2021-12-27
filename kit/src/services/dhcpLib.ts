@@ -135,7 +135,7 @@ export const parseUid = (line: string): string => {
 }
 
 export const getUuidDet = (lease: Lease): string => {
-    const leaseString = `${lease.ip}${lease.mac}${lease.host}${lease.start.toISOString()}${lease.end.toISOString()}`
+    const leaseString = `${lease.ip}${lease.mac}${lease.name}${(lease.start as Date).toISOString()}${(lease.end as Date).toISOString()}`
     return getUuid(leaseString)
 }
 

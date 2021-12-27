@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-	import type { DhcpConfig, LeasesOverView } from "../../types/interfaces"
+	import type { DhcpConfig } from "../../types/interfaces"
 	export let config: DhcpConfig = {
 		hosts: [],
 		subnets: []
@@ -29,6 +29,8 @@
 </svelte:head>
 <h1> Config</h1>
 <div class="config">
+	<label for="configfile">Config file</label>
+	<span id="configfile">{config.configFilePath}</span>
 	{#each config.subnets as sub}
 		<div class="subnet">
 			<p>
@@ -61,7 +63,7 @@
 		<div class="hosts">
 			{#each config.hosts as host}
 				<p>
-					{host.ip} {host.mac} {host.host}
+					{host.ip} {host.mac} {host.name}
 				</p>
 			{/each}	
 		</div>
