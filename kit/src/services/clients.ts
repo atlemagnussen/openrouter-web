@@ -16,6 +16,18 @@ export const getActiveOverview = async (): Promise<OverView<Host>> => {
 
     for(let i = 0; i < pingedIps.length; i++) {
         const ip = pingedIps[i]
+        let ipIsRouter = false
+        for (let i = 0; i < config.subnets.length; i++) {
+            const subnet = config.subnets[i]
+            for (let y = 0; y < subnet.routers.length; y++) {
+                const router = subnet.routers[y]
+                if (router == ip)
+                    ipIsRouter = true
+            }
+        }
+        if (ipIsRouter)
+            continue
+        
         let h = findHost(config, leases, ip)
         if (!h) {
             h = {
