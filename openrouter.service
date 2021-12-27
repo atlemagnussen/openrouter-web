@@ -2,7 +2,7 @@
 Description=OpenRouter
 
 [Service]
-ExecStart=/home/atle/.nvm/versions/node/v16.13.1/bin/node /home/atle/dev/openrouter-web/kit/build/index.js
+ExecStart=/home/atle/.nvm/versions/node/v16.13.1/bin/node /home/atle/dev/openrouter-web/app/build/index.js
 Restart=always
 RestartSec=10
 SyslogIdentifier=Openrouter
