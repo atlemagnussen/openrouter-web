@@ -1,6 +1,8 @@
 dhcpd.conf
 dhcpd.leases
 
+appsettings.Development.json
+
 # Logs
 logs
 *.log
