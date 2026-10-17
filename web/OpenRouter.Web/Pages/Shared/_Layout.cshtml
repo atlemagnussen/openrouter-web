@@ -1,0 +1,32 @@
+﻿@{
+    var current = ViewContext.RouteData.Values["page"] as string;
+    string Active(string page) => current == page ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · OpenRouter</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" asp-page="/Index">
+            <img src="~/favicon.svg" alt="" width="24" height="24" />
+            OpenRouter
+        </a>
+        <nav>
+            <a asp-page="/Clients" class="@Active("/Clients")">Clients</a>
+            <a asp-page="/Leases" class="@Active("/Leases")">Leases</a>
+            <a asp-page="/Dhcp" class="@Active("/Dhcp")">DHCP</a>
+            <a asp-page="/Ipv6" class="@Active("/Ipv6")">IPv6</a>
+        </nav>
+    </header>
+    <main>
+        @RenderBody()
+    </main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

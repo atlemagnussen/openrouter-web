@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="OpenRouter.Web.Tests/OpenRouter.Web.Tests.csproj" />
+  <Project Path="OpenRouter.Web/OpenRouter.Web.csproj" />
+</Solution>
