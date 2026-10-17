@@ -1,0 +1,16 @@
+[
+  {"ifindex":1,"ifname":"lo","flags":["LOOPBACK","UP","LOWER_UP"],"operstate":"UNKNOWN","link_type":"loopback","address":"00:00:00:00:00:00",
+   "addr_info":[{"family":"inet","local":"127.0.0.1","prefixlen":8,"scope":"host","valid_life_time":4294967295,"preferred_life_time":4294967295},
+                {"family":"inet6","local":"::1","prefixlen":128,"scope":"host","valid_life_time":4294967295,"preferred_life_time":4294967295}]},
+  {"ifindex":2,"ifname":"eth0","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"operstate":"UP","link_type":"ether","address":"02:00:00:00:00:01",
+   "addr_info":[{"family":"inet","local":"203.0.113.45","prefixlen":24,"scope":"global","dynamic":true,"valid_life_time":3245,"preferred_life_time":3245},
+                {"family":"inet6","local":"fe80::ff:fe00:1","prefixlen":64,"scope":"link","valid_life_time":4294967295,"preferred_life_time":4294967295}]},
+  {"ifindex":3,"ifname":"eth1","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"operstate":"UP","link_type":"ether","address":"02:00:00:00:00:02",
+   "addr_info":[{"family":"inet","local":"192.168.1.1","prefixlen":24,"scope":"global","valid_life_time":4294967295,"preferred_life_time":4294967295},
+                {"family":"inet6","local":"2001:db8:1234:e701::1","prefixlen":64,"scope":"global","dynamic":true,"valid_life_time":3540,"preferred_life_time":3540},
+                {"family":"inet6","local":"fd00:1234:5678:9abc::1","prefixlen":64,"scope":"global","nodad":true,"valid_life_time":4294967295,"preferred_life_time":4294967295},
+                {"family":"inet6","local":"fe80::ff:fe00:2","prefixlen":64,"scope":"link","valid_life_time":4294967295,"preferred_life_time":4294967295}]},
+  {"ifindex":4,"ifname":"eth2","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"operstate":"UP","link_type":"ether","address":"02:00:00:00:00:03",
+   "addr_info":[{"family":"inet","local":"192.168.2.1","prefixlen":24,"scope":"global","valid_life_time":4294967295,"preferred_life_time":4294967295},
+                {"family":"inet6","local":"fe80::ff:fe00:3","prefixlen":64,"scope":"link","valid_life_time":4294967295,"preferred_life_time":4294967295}]}
+]

@@ -1,7 +1,73 @@
 @page
+@using OpenRouter.Web.Clients
+@model ClientsModel
 @{
     ViewData["Title"] = "Clients";
 }
 
 <h1>Clients</h1>
-<p class="muted">Devices currently on the network, from the kernel neighbour table, matched with DHCP leases and reservations.</p>
+<p class="muted">
+    Devices the router has talked to recently, from the kernel's neighbour table.
+    Names come from the DHCP reservation, or else from the device's own lease.
+</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+@if (Model.Clients.Count > 0)
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>IPv4</th>
+                    <th>IPv6</th>
+                    <th>MAC</th>
+                    <th>Network</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var client in Model.Clients)
+                {
+                    <tr>
+                        <td>
+                            @(client.Name ?? "—")
+                            @if (client.HasReservation)
+                            {
+                                <span class="badge" title="Has a fixed IP in Kea">reserved</span>
+                            }
+                        </td>
+                        <td class="mono">@string.Join(", ", client.Ipv4)</td>
+                        <td class="mono small">
+                            @foreach (var address in client.Ipv6)
+                            {
+                                <div>@address</div>
+                            }
+                        </td>
+                        <td class="mono">@client.Mac</td>
+                        <td>@(client.Network ?? client.Device)</td>
+                        <td>
+                            <span class="status status-@client.Status.ToString().ToLowerInvariant()">
+                                @(client.Status switch
+                                {
+                                    NeighbourStatus.Reachable => "online",
+                                    NeighbourStatus.Checking => "checking",
+                                    _ => "idle",
+                                })
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="muted small">
+        @Model.Clients.Count devices. "Idle" means the router hasn't heard from the device in the last
+        minute or so; it may still be connected.
+    </p>
+}
+else if (Model.Errors.Count == 0)
+{
+    <p>No devices found.</p>
+}

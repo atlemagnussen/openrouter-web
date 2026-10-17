@@ -1,7 +1,148 @@
 @page
+@model Ipv6Model
 @{
     ViewData["Title"] = "IPv6";
 }
 
 <h1>IPv6</h1>
-<p class="muted">Router advertisements (radvd) and the delegated prefix.</p>
+<p class="muted">
+    What radvd advertises to devices on each LAN. Devices build their own addresses from these prefixes (SLAAC)
+    and use the advertised DNS servers.
+</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+@foreach (var view in Model.Interfaces)
+{
+    <section class="card">
+        <h2>
+            <span class="mono">@view.Radvd.Name</span>
+            @if (view.Interface is { } nic)
+            {
+                <span class="badge">@nic.OperState.ToLowerInvariant()</span>
+            }
+            else if (Model.HasAddresses)
+            {
+                <span class="badge badge-warn">not found</span>
+            }
+        </h2>
+
+        @if (Model.HasAddresses)
+        {
+            <h3>Router addresses</h3>
+            @if (view.Addresses.Count > 0)
+            {
+                <ul class="plain mono">
+                    @foreach (var address in view.Addresses)
+                    {
+                        <li>@address <span class="muted small">valid @Format.Lifetime(address.ValidLifetime)</span></li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="muted">No global IPv6 addresses on this interface.</p>
+            }
+        }
+
+        <h3>Prefixes</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prefix</th>
+                        <th>On-link</th>
+                        <th>Autonomous</th>
+                        <th>Valid</th>
+                        <th>Preferred</th>
+                        <th>Routed by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var prefix in view.Prefixes)
+                    {
+                        <tr>
+                            <td class="mono">
+                                @prefix.Prefix
+                                @if (prefix.IsAutomatic)
+                                {
+                                    <div class="muted small">every /64 on the interface</div>
+                                }
+                            </td>
+                            <td>@(prefix.Section.Option("AdvOnLink") ?? "on")</td>
+                            <td>@(prefix.Section.Option("AdvAutonomous") ?? "on")</td>
+                            <td>@Lifetime(prefix.Section.Option("AdvValidLifetime"), 86400)</td>
+                            <td>@Lifetime(prefix.Section.Option("AdvPreferredLifetime"), 14400)</td>
+                            <td class="mono small">
+                                @if (prefix.Covering.Count > 0)
+                                {
+                                    @foreach (var address in prefix.Covering)
+                                    {
+                                        <div>@address</div>
+                                    }
+                                }
+                                else if (Model.HasAddresses)
+                                {
+                                    <span class="warn" title="Devices will take addresses in this prefix, but replies to them can't be routed back.">
+                                        no matching address on @view.Radvd.Name
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (view.Radvd.Rdnss.Any() || view.Radvd.Dnssl.Any())
+        {
+            <h3>DNS</h3>
+            <dl class="facts">
+                @foreach (var rdnss in view.Radvd.Rdnss)
+                {
+                    <dt>Servers</dt>
+                    <dd class="mono">
+                        @foreach (var address in rdnss.Arguments)
+                        {
+                            <div>
+                                @address
+                                @if (Model.IsRouterAddress(address))
+                                {
+                                    <span class="badge">this router</span>
+                                }
+                            </div>
+                        }
+                    </dd>
+                }
+                @foreach (var dnssl in view.Radvd.Dnssl)
+                {
+                    <dt>Search domains</dt>
+                    <dd class="mono">@string.Join(" ", dnssl.Arguments)</dd>
+                }
+            </dl>
+        }
+
+        @if (view.Radvd.Options.Count > 0)
+        {
+            <h3>Advertisement settings</h3>
+            <dl class="facts">
+                @foreach (var option in view.Radvd.Options)
+                {
+                    <dt class="mono">@option.Name</dt>
+                    <dd class="mono">@option.Value</dd>
+                }
+            </dl>
+        }
+    </section>
+}
+
+@functions {
+    // radvd's defaults: 1 day valid, 4 hours preferred.
+    private static string Lifetime(string? value, int defaultSeconds) => value switch
+    {
+        null => $"{Format.Duration(defaultSeconds)} (default)",
+        "infinity" => "forever",
+        _ when int.TryParse(value, out var seconds) => Format.Duration(seconds),
+        _ => value,
+    };
+}

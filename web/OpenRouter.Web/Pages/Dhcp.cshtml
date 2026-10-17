@@ -1,7 +1,102 @@
 @page
+@model DhcpModel
 @{
     ViewData["Title"] = "DHCP";
 }
 
 <h1>DHCP</h1>
-<p class="muted">Kea DHCPv4 subnets and reservations.</p>
+<p class="muted">Kea DHCPv4 settings: one section per network, with its fixed-IP reservations.</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+@if (Model.Config is { } config)
+{
+    <dl class="facts">
+        <dt>Interfaces</dt>
+        <dd class="mono">@string.Join(", ", config.Interfaces)</dd>
+        <dt>Lease time</dt>
+        <dd>@Format.Duration(config.ValidLifetime) <span class="muted">(max @Format.Duration(config.MaxValidLifetime))</span></dd>
+    </dl>
+
+    @foreach (var subnet in config.Subnets)
+    {
+        <section class="card">
+            <h2>
+                @(subnet.Name ?? subnet.Subnet)
+                @if (subnet.Name is not null)
+                {
+                    <span class="muted mono">@subnet.Subnet</span>
+                }
+            </h2>
+            <dl class="facts">
+                <dt>Interface</dt>
+                <dd class="mono">@(subnet.Interface ?? "—")</dd>
+                <dt>Dynamic range</dt>
+                <dd class="mono">@(subnet.Pools.Count > 0 ? string.Join(", ", subnet.Pools) : "—")</dd>
+                <dt>Gateway</dt>
+                <dd class="mono">@(subnet.Option("routers") ?? "—")</dd>
+                <dt>DNS servers</dt>
+                <dd class="mono">@(subnet.Option("domain-name-servers") ?? "—")</dd>
+                @if (subnet.ValidLifetime is not null)
+                {
+                    <dt>Lease time</dt>
+                    <dd>@Format.Duration(subnet.ValidLifetime)</dd>
+                }
+            </dl>
+
+            @if (subnet.Reservations.Count > 0)
+            {
+                <h3>Reservations <span class="count">@subnet.Reservations.Count</span></h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP address</th>
+                                <th>Name</th>
+                                <th>MAC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reservation in DhcpModel.ByAddress(subnet.Reservations))
+                            {
+                                <tr>
+                                    <td class="mono">@reservation.IpAddress</td>
+                                    <td>@reservation.Hostname</td>
+                                    <td class="mono">@(reservation.HwAddress ?? "(other identifier)")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+
+    @if (config.GlobalReservations.Count > 0)
+    {
+        <section class="card">
+            <h2>Global reservations <span class="count">@config.GlobalReservations.Count</span></h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP address</th>
+                            <th>Name</th>
+                            <th>MAC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var reservation in DhcpModel.ByAddress(config.GlobalReservations))
+                        {
+                            <tr>
+                                <td class="mono">@reservation.IpAddress</td>
+                                <td>@reservation.Hostname</td>
+                                <td class="mono">@(reservation.HwAddress ?? "(other identifier)")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}

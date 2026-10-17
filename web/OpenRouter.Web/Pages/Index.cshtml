@@ -1,7 +1,47 @@
 @page
+@model IndexModel
 @{
     ViewData["Title"] = "Overview";
 }
 
 <h1>Overview</h1>
-<p class="muted">Router status will go here.</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<div class="tiles">
+    <a class="tile" asp-page="/Clients">
+        <span class="tile-value">@(Model.Clients?.ToString() ?? "—")</span>
+        <span class="tile-label">devices seen</span>
+    </a>
+    <a class="tile" asp-page="/Leases">
+        <span class="tile-value">@(Model.ActiveLeases?.ToString() ?? "—")</span>
+        <span class="tile-label">active leases</span>
+    </a>
+    <a class="tile" asp-page="/Dhcp">
+        <span class="tile-value">@(Model.Reservations?.ToString() ?? "—")</span>
+        <span class="tile-label">reservations</span>
+    </a>
+</div>
+
+@if (Model.Subnets.Count > 0)
+{
+    <h2>Networks</h2>
+    <dl class="facts">
+        @foreach (var subnet in Model.Subnets)
+        {
+            <dt>@(subnet.Name ?? subnet.Interface)</dt>
+            <dd><span class="mono">@subnet.Subnet</span> <span class="muted">on @subnet.Interface</span></dd>
+        }
+    </dl>
+}
+
+@if (Model.Ipv6Prefixes.Count > 0)
+{
+    <h2>IPv6 prefixes advertised</h2>
+    <ul class="plain mono">
+        @foreach (var prefix in Model.Ipv6Prefixes)
+        {
+            <li><a asp-page="/Ipv6">@prefix</a></li>
+        }
+    </ul>
+}

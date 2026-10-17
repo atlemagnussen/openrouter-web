@@ -58,6 +58,17 @@ Facts that shape the code:
 - Run external commands with `ProcessStartInfo.ArgumentList`, never by concatenating a
   command string, and never pass user input to a shell.
 
+## Code layout (`web/OpenRouter.Web`)
+
+- `Kea/`, `Radvd/`, `Network/`: one folder per data source, each with models, a pure parser
+  and a thin service (`KeaService`, `RadvdService`, `IpCommand`) that does the I/O.
+- `Clients/`: `ClientDirectory` merges the neighbour table with Kea reservations and leases by MAC.
+- `Pages/`: Razor Pages. Page models derive from `RouterPageModel` and load data through
+  `TryLoadAsync`, so an unreadable source shows as a message on the page instead of an error page.
+- `Configuration/`: `RouterOptions`. In Development, `IpSampleDir` makes `IpCommand` read
+  `samples/ip-*.json` instead of running `ip`, and `SampleNow` stops the clock (`TimeProvider`)
+  at the time the sample leases were made for. Always get the time from the injected `TimeProvider`.
+
 ## Security model (applies once editing exists)
 
 - The app runs as a dedicated unprivileged user (planned: `openrouter`), never root.

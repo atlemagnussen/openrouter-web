@@ -1,7 +1,82 @@
 @page
+@model LeasesModel
 @{
     ViewData["Title"] = "Leases";
 }
 
 <h1>Leases</h1>
-<p class="muted">Kea DHCPv4 leases.</p>
+<p class="muted">IPv4 addresses handed out by Kea. IPv6 has no leases here: devices pick their own addresses (SLAAC).</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<h2>Active <span class="count">@Model.Active.Count</span></h2>
+@if (Model.Active.Count > 0)
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>IP address</th>
+                    <th>Hostname</th>
+                    <th>MAC</th>
+                    <th>Network</th>
+                    <th>Expires</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Active)
+                {
+                    <tr>
+                        <td class="mono">@row.Lease.IpAddress</td>
+                        <td>
+                            @(row.Lease.Hostname ?? "—")
+                            @if (row.ReservedName is not null)
+                            {
+                                <span class="badge" title="Reserved as @row.ReservedName">reserved</span>
+                            }
+                        </td>
+                        <td class="mono">@row.Lease.HwAddress</td>
+                        <td>@row.Network</td>
+                        <td title="@row.Lease.Expires.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")">@Format.Relative(row.Lease.Expires, Model.Now)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Model.Errors.Count == 0)
+{
+    <p>No active leases.</p>
+}
+
+@if (Model.Inactive.Count > 0)
+{
+    <details>
+        <summary>Expired or released <span class="count">@Model.Inactive.Count</span></summary>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP address</th>
+                        <th>Hostname</th>
+                        <th>MAC</th>
+                        <th>Network</th>
+                        <th>Ended</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Inactive)
+                    {
+                        <tr>
+                            <td class="mono">@row.Lease.IpAddress</td>
+                            <td>@(row.Lease.Hostname ?? "—")</td>
+                            <td class="mono">@row.Lease.HwAddress</td>
+                            <td>@row.Network</td>
+                            <td>@Format.Relative(row.Lease.Expires, Model.Now)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </details>
+}
