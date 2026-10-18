@@ -1,7 +1,11 @@
 using OpenRouter.Web.Configuration;
+using OpenRouter.Web.Firewall;
 using OpenRouter.Web.Kea;
+using OpenRouter.Web.Kernel;
 using OpenRouter.Web.Network;
+using OpenRouter.Web.Probes;
 using OpenRouter.Web.Radvd;
+using OpenRouter.Web.Systemd;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +21,10 @@ builder.Services.AddSingleton<KeaControlClient>();
 builder.Services.AddSingleton<KeaService>();
 builder.Services.AddSingleton<RadvdService>();
 builder.Services.AddSingleton<IpCommand>();
+builder.Services.AddSingleton<KernelReader>();
+builder.Services.AddSingleton<SystemdService>();
+builder.Services.AddSingleton<FirewallService>();
+builder.Services.AddSingleton<ProbeService>();
 
 builder.Services.AddRazorPages();
 

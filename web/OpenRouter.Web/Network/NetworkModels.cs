@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace OpenRouter.Web.Network;
 
 /// <summary>An entry in the kernel neighbour table (ARP for IPv4, NDP for IPv6).</summary>
@@ -19,5 +21,20 @@ public sealed record NetAddress(
     TimeSpan? ValidLifetime,
     TimeSpan? PreferredLifetime)
 {
+    /// <summary>True when this address's own prefix contains <paramref name="prefix"/>, so the router can route it.</summary>
+    public bool Covers(IpPrefix prefix) =>
+        PrefixLength <= prefix.Length &&
+        IPAddress.TryParse(Address, out var ip) &&
+        new IpPrefix(ip, PrefixLength).Contains(prefix.Network);
+
     public override string ToString() => $"{Address}/{PrefixLength}";
 }
+
+/// <summary>An interface's counters from <c>ip -s link</c>, cumulative since boot.</summary>
+public sealed record LinkStats(string Name, string OperState, int Mtu, LinkCounters Rx, LinkCounters Tx);
+
+/// <summary><see cref="Errors"/> is the kernel's total (CRC, frame, overrun, carrier, ...).</summary>
+public sealed record LinkCounters(long Bytes, long Packets, long Errors, long Dropped);
+
+/// <summary>A default route. <see cref="Gateway"/> is null for point-to-point links.</summary>
+public sealed record DefaultRoute(string? Gateway, string Device);

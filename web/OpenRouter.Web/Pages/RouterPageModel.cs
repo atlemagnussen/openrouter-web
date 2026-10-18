@@ -23,7 +23,9 @@ public abstract class RouterPageModel(ILogger logger) : PageModel
             or JsonException or InvalidOperationException or SocketException or Win32Exception)
         {
             logger.LogWarning(ex, "Could not read {Source}", source);
-            Errors.Add($"Could not read {source}: {ex.Message}");
+            // Pages may load several sources in parallel.
+            lock (Errors)
+                Errors.Add($"Could not read {source}: {ex.Message}");
             return null;
         }
     }

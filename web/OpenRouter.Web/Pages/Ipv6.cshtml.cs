@@ -42,7 +42,7 @@ public sealed class Ipv6Model(RadvdService radvd, IpCommand ip, ILogger<Ipv6Mode
                 var isAutomatic = prefix.Value.Network.Equals(IPAddress.IPv6Any);
                 var covering = isAutomatic
                     ? addresses.Where(a => a.PrefixLength == prefix.Value.Length).ToList()
-                    : addresses.Where(a => Covers(a, prefix.Value)).ToList();
+                    : addresses.Where(a => a.Covers(prefix.Value)).ToList();
                 return new PrefixView(section, text, covering, isAutomatic);
             }).ToList();
             return new InterfaceView(i, nic, addresses, prefixes);
@@ -51,9 +51,4 @@ public sealed class Ipv6Model(RadvdService radvd, IpCommand ip, ILogger<Ipv6Mode
 
     public bool IsRouterAddress(string address) =>
         Interfaces.Any(i => i.Addresses.Any(a => a.Address == address));
-
-    private static bool Covers(NetAddress address, IpPrefix advertised) =>
-        address.PrefixLength <= advertised.Length &&
-        IPAddress.TryParse(address.Address, out var ip) &&
-        new IpPrefix(ip, address.PrefixLength).Contains(advertised.Network);
 }

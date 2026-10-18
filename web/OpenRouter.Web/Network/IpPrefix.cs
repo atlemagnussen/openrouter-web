@@ -20,6 +20,11 @@ public readonly record struct IpPrefix(IPAddress Network, int Length)
         return true;
     }
 
+    /// <summary>fc00::/7, the stable local IPv6 range (as opposed to the ISP's public prefix).</summary>
+    public bool IsUniqueLocal =>
+        Network.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 &&
+        (Network.GetAddressBytes()[0] & 0xFE) == 0xFC;
+
     public bool Contains(string address) => IPAddress.TryParse(address, out var ip) && Contains(ip);
 
     public bool Contains(IPAddress address)

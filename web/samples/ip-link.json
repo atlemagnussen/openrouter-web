@@ -1,0 +1,10 @@
+[
+  {"ifindex":1,"ifname":"lo","flags":["LOOPBACK","UP","LOWER_UP"],"mtu":65536,"qdisc":"noqueue","operstate":"UNKNOWN","link_type":"loopback","address":"00:00:00:00:00:00",
+   "stats64":{"rx":{"bytes":4512340,"packets":40211,"errors":0,"dropped":0,"over_errors":0,"multicast":0},"tx":{"bytes":4512340,"packets":40211,"errors":0,"dropped":0,"carrier_errors":0,"collisions":0}}},
+  {"ifindex":2,"ifname":"eth0","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"mtu":1500,"qdisc":"fq_codel","operstate":"UP","link_type":"ether","address":"02:00:00:00:00:01",
+   "stats64":{"rx":{"bytes":412377210443,"packets":301229871,"errors":0,"dropped":0,"over_errors":0,"multicast":1204},"tx":{"bytes":38211092311,"packets":121948211,"errors":0,"dropped":0,"carrier_errors":0,"collisions":0}}},
+  {"ifindex":3,"ifname":"eth1","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"mtu":1500,"qdisc":"fq_codel","operstate":"UP","link_type":"ether","address":"02:00:00:00:00:02",
+   "stats64":{"rx":{"bytes":36512872001,"packets":110223891,"errors":0,"dropped":18211,"over_errors":0,"multicast":88123},"tx":{"bytes":401229871002,"packets":289112093,"errors":0,"dropped":0,"carrier_errors":0,"collisions":0}}},
+  {"ifindex":4,"ifname":"eth2","flags":["BROADCAST","MULTICAST","UP","LOWER_UP"],"mtu":1500,"qdisc":"fq_codel","operstate":"UP","link_type":"ether","address":"02:00:00:00:00:03",
+   "stats64":{"rx":{"bytes":1822931002,"packets":9823112,"errors":2,"dropped":0,"over_errors":0,"multicast":102},"tx":{"bytes":11293812004,"packets":10293811,"errors":0,"dropped":31022,"carrier_errors":0,"collisions":0}}}
+]

@@ -8,6 +8,8 @@
     --ok: #15803d;
     --warn: #b45309;
     --warn-bg: #fef3c7;
+    --bad: #b91c1c;
+    --info: #2563eb;
     --row-alt: #f9fafb;
     color-scheme: light dark;
 }
@@ -23,6 +25,8 @@
         --ok: #4ade80;
         --warn: #fbbf24;
         --warn-bg: #3b2f12;
+        --bad: #f87171;
+        --info: #6c9cff;
         --row-alt: #20252d;
     }
 }
@@ -276,6 +280,69 @@ details .table-wrap {
 
 .tile-label {
     color: var(--muted);
+}
+
+.health {
+    display: inline-block;
+    flex: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+    background: var(--muted);
+    vertical-align: 0.05em;
+}
+
+.health-ok {
+    background: var(--ok);
+}
+
+.health-info {
+    background: var(--info);
+}
+
+.health-warning {
+    background: var(--warn);
+}
+
+.health-problem {
+    background: var(--bad);
+}
+
+ul.checks {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+ul.checks > li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--border);
+}
+
+ul.checks > li > div {
+    min-width: 0;
+}
+
+ul.checks p,
+ul.checks ul {
+    margin: 0.25rem 0 0;
+}
+
+ul.checks ul {
+    padding-left: 1.25rem;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 @media (max-width: 40rem) {

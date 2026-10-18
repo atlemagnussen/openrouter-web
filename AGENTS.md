@@ -62,17 +62,26 @@ Facts that shape the code:
 
 - `Kea/`, `Radvd/`, `Network/`: one folder per data source, each with models, a pure parser
   and a thin service (`KeaService`, `RadvdService`, `IpCommand`) that does the I/O.
+- `Kernel/` (`/proc`, `/sys`), `Systemd/` (`systemctl show`), `Firewall/` (nftables.conf text) and
+  `Probes/` (ping, a minimal DNS query) follow the same pattern. `Processes/CommandRunner` runs
+  external commands.
+- `Health/`: the Health page's checks. Each area (`DhcpHealth`, `Ipv6Health`, `LinkHealth`, ...) is a
+  pure function from loaded data to `HealthCheck`s with a status, summary and advice; `HealthReport`
+  assembles them. New automatic checks go here, with tests in `HealthCheckTests`.
 - `Clients/`: `ClientDirectory` merges the neighbour table with Kea reservations and leases by MAC.
 - `Pages/`: Razor Pages. Page models derive from `RouterPageModel` and load data through
   `TryLoadAsync`, so an unreadable source shows as a message on the page instead of an error page.
-- `Configuration/`: `RouterOptions`. In Development, `IpSampleDir` makes `IpCommand` read
-  `samples/ip-*.json` instead of running `ip`, and `SampleNow` stops the clock (`TimeProvider`)
+- `Configuration/`: `RouterOptions`. In Development, `SampleDir` makes services read command output
+  from `samples/` (`ip-*.json`, `kea-statistics.json`, `systemctl-show.txt`) and `/proc`, `/sys` from
+  `samples/proc`, `samples/sys`, and skips live ping/DNS tests; `SampleNow` stops the clock (`TimeProvider`)
   at the time the sample leases were made for. Always get the time from the injected `TimeProvider`.
 
 ## Security model (applies once editing exists)
 
 - The app runs as a dedicated unprivileged user (planned: `openrouter`), never root.
-  It reaches Kea through its control socket (group `_kea`), and gets other privileged
+  It reaches Kea through its control socket (group `_kea`). The Health page needs nothing more:
+  `/proc`, `/sys`, `ip` and `systemctl show` are unprivileged, and ping uses unprivileged ICMP
+  sockets (`net.ipv4.ping_group_range`, open to all users on Debian). It gets other privileged
   actions only through narrow, explicit grants (e.g. sudoers for one exact
   `systemctl reload radvd`).
 - Every config change is: back up the current file → write the new one → validate with the

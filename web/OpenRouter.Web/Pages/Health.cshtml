@@ -1,0 +1,79 @@
+@page
+@using OpenRouter.Web.Health
+@model HealthModel
+@{
+    ViewData["Title"] = "Health";
+}
+
+<h1>Health</h1>
+<p class="muted">
+    Automatic checks for common causes of lag and dropped connections.
+    Checked at @Model.CheckedAt.ToLocalTime().ToString("HH:mm:ss") · <a asp-page="/Health">Run again</a>
+</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+<div class="tiles">
+    <div class="tile">
+        <span class="tile-value"><span class="health health-problem"></span>@Model.Count(HealthStatus.Problem)</span>
+        <span class="tile-label">problems</span>
+    </div>
+    <div class="tile">
+        <span class="tile-value"><span class="health health-warning"></span>@Model.Count(HealthStatus.Warning)</span>
+        <span class="tile-label">warnings</span>
+    </div>
+    <div class="tile">
+        <span class="tile-value"><span class="health health-info"></span>@Model.Count(HealthStatus.Info)</span>
+        <span class="tile-label">notes</span>
+    </div>
+    <div class="tile">
+        <span class="tile-value"><span class="health health-ok"></span>@Model.Count(HealthStatus.Ok)</span>
+        <span class="tile-label">passed</span>
+    </div>
+</div>
+
+@foreach (var area in Model.Areas)
+{
+    <section class="card">
+        <h2><span class="health @Css(area.Status)" title="@Label(area.Status)"></span>@area.Name</h2>
+        <p class="muted small">@area.Description</p>
+        <ul class="checks">
+            @foreach (var check in area.Checks)
+            {
+                <li>
+                    <span class="health @Css(check.Status)" title="@Label(check.Status)"></span>
+                    <div>
+                        <strong>@check.Title</strong>
+                        <span class="sr-only">(@Label(check.Status))</span>
+                        <div>@check.Summary</div>
+                        @if (check.Details is { Count: > 0 })
+                        {
+                            <ul class="small">
+                                @foreach (var detail in check.Details)
+                                {
+                                    <li>@detail</li>
+                                }
+                            </ul>
+                        }
+                        @if (check.Advice is not null && check.Status != HealthStatus.Ok)
+                        {
+                            <p class="muted small">@check.Advice</p>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@functions {
+    private static string Css(HealthStatus status) => $"health-{status.ToString().ToLowerInvariant()}";
+
+    private static string Label(HealthStatus status) => status switch
+    {
+        HealthStatus.Ok => "OK",
+        HealthStatus.Info => "Note",
+        HealthStatus.Warning => "Warning",
+        _ => "Problem",
+    };
+}

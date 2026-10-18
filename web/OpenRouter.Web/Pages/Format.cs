@@ -25,4 +25,18 @@ public static class Format
     /// <summary>"in 7 min" or "12 min ago".</summary>
     public static string Relative(DateTimeOffset when, DateTimeOffset now) =>
         when >= now ? $"in {Duration(when - now)}" : $"{Duration(now - when)} ago";
+
+    /// <summary>"512 B", "1.4 MB", "2.31 TB" (decimal units, like network counters usually are).</summary>
+    public static string Bytes(long bytes)
+    {
+        string[] units = ["B", "kB", "MB", "GB", "TB", "PB"];
+        double value = bytes;
+        var unit = 0;
+        while (value >= 1000 && unit < units.Length - 1)
+        {
+            value /= 1000;
+            unit++;
+        }
+        return unit == 0 ? $"{bytes} B" : $"{value:0.##} {units[unit]}";
+    }
 }

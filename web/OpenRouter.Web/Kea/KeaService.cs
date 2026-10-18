@@ -13,6 +13,24 @@ public sealed class KeaService(
     public async Task<KeaConfig> GetConfigAsync(CancellationToken cancellationToken) =>
         KeaConfigParser.Parse(await File.ReadAllTextAsync(options.Value.KeaConfigPath, cancellationToken));
 
+    /// <summary>Kea's counters (packets, allocation failures, ...). Needs the control socket.</summary>
+    public async Task<KeaStatistics> GetStatisticsAsync(CancellationToken cancellationToken)
+    {
+        if (options.Value.SampleDir is { } sampleDir)
+            return KeaStatisticsParser.Parse(
+                await File.ReadAllTextAsync(Path.Combine(sampleDir, "kea-statistics.json"), cancellationToken), TimeZoneInfo.Local);
+        if (!control.IsAvailable)
+            throw new IOException($"Kea's control socket {options.Value.KeaControlSocket} doesn't exist.");
+        try
+        {
+            return KeaStatisticsParser.Parse(await control.SendAsync("statistic-get-all", cancellationToken), TimeZoneInfo.Local);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new IOException("Kea's control socket didn't answer in time.");
+        }
+    }
+
     /// <summary>Leases from Kea's API when its socket is reachable, otherwise from the lease file.</summary>
     public async Task<IReadOnlyList<KeaLease>> GetLeasesAsync(CancellationToken cancellationToken)
     {
