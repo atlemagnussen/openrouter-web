@@ -149,8 +149,11 @@ public static class Ipv6Health
             return new(title, Info, "No DNS servers advertised (RDNSS).",
                 "Dual-stack clients still use the IPv4 DNS servers from DHCP, so this is fine unless you want IPv6-only clients.");
 
-        var routerAddresses = interfaces?.SelectMany(i => i.Addresses).Select(a => a.Address).ToHashSet();
-        var foreign = routerAddresses is null ? [] : servers.Where(s => !routerAddresses.Contains(s)).ToList();
+        // Compare parsed addresses, not text: radvd.conf may say fda9:9699:0faa:… where ip shows fda9:9699:faa:….
+        var routerAddresses = interfaces?.SelectMany(i => i.Addresses)
+            .Select(a => IPAddress.TryParse(a.Address, out var ip) ? ip : null).OfType<IPAddress>().ToHashSet();
+        var foreign = routerAddresses is null ? [] : servers
+            .Where(s => !IPAddress.TryParse(s, out var ip) || !routerAddresses.Contains(ip)).ToList();
         return foreign.Count == 0
             ? new(title, Ok, string.Join(", ", servers))
             : new(title, Info, string.Join(", ", servers),

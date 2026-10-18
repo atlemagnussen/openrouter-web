@@ -81,6 +81,15 @@ public class HealthCheckTests
         Assert.Equal(Problem, check.Status);
     }
 
+    [Fact]
+    public void Dns_server_written_with_leading_zeros_is_still_the_router()
+    {
+        var radvd = RadvdParser.Parse("interface eth1 { AdvSendAdvert on; RDNSS fd00:0abc::1 { }; };");
+        NetInterface[] interfaces = [new("eth1", null, "UP", [new("fd00:abc::1", 64, true, "global", null, null)])];
+
+        Assert.Equal(Ok, Single(Ipv6Health.Check(radvd, interfaces, null), "IPv6 DNS servers on eth1").Status);
+    }
+
     // --- DHCP ---
 
     private static KeaLease Lease(string ip, string mac, int state = 0, int expiresInMinutes = 5) =>
