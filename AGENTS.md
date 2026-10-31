@@ -4,9 +4,8 @@ A web interface for a self-built Linux router, in the spirit of a consumer route
 It starts read-only (show clients, leases, DHCP and IPv6 config) and will grow editing,
 authentication and background tasks.
 
-- `web/` — the new app (.NET 10, ASP.NET Core Razor Pages). All new work goes here.
-- `app/` — the old SvelteKit app built for ISC dhcpd. Legacy, kept for reference only;
-  it will be deleted. Don't modify it or port its parsers (the data sources have changed).
+Everything lives in `web/`: the app (.NET 10, ASP.NET Core Razor Pages), its tests, the TypeScript
+client, made-up sample data, and the deploy scripts (`publish.sh`, `run.sh`, `openrouter-web.service`).
 
 **This repository is public.** Never commit real router data: config files, leases, MAC addresses,
 hostnames, IPv6 prefixes or public IPs. Use the made-up data in `web/samples/`.
@@ -123,5 +122,4 @@ cd client && npm run dev                 # rebuild the TypeScript client on chan
 Deployment: `web/publish.sh` builds the client and a self-contained Release build, installs it to
 `/opt/openrouter-web` and restarts the `openrouter-web` systemd service
 (`web/openrouter-web.service`, runs as the `openrouter` user). Keep that unit free of options that imply
-`NoNewPrivileges`, or sudo stops working. The root `openrouter.service` and `start-prod.sh` belong to the
-old app.
+`NoNewPrivileges`, or sudo stops working.
