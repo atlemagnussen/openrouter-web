@@ -51,6 +51,24 @@ public sealed class KernelReader(IOptions<RouterOptions> options)
         return nics;
     }
 
+    /// <summary>Bytes received and sent by each interface since boot, from /sys/class/net/*/statistics.</summary>
+    public async Task<IReadOnlyDictionary<string, (long Rx, long Tx)>> GetInterfaceBytesAsync(
+        IEnumerable<string> names, CancellationToken cancellationToken)
+    {
+        var bytes = new Dictionary<string, (long Rx, long Tx)>();
+        foreach (var name in names)
+        {
+            if (name.Length == 0 || name.Contains('/') || name.StartsWith('.'))
+                continue;
+            var dir = Path.Combine(options.Value.SysRoot, "class/net", name, "statistics");
+            var rx = await ReadOptionalAsync(Path.Combine(dir, "rx_bytes"), cancellationToken);
+            var tx = await ReadOptionalAsync(Path.Combine(dir, "tx_bytes"), cancellationToken);
+            if (rx is not null && tx is not null)
+                bytes[name] = (KernelParser.ParseNumber(rx), KernelParser.ParseNumber(tx));
+        }
+        return bytes;
+    }
+
     /// <summary>The file's text, or null if it doesn't exist (e.g. conntrack isn't loaded).</summary>
     private static async Task<string?> ReadOptionalAsync(string path, CancellationToken cancellationToken, bool ignoreIoErrors = false)
     {

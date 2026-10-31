@@ -11,6 +11,15 @@
     --bad: #b91c1c;
     --info: #2563eb;
     --row-alt: #f9fafb;
+    /* Chart series: categorical slots in fixed order (validated for colour-vision deficiencies), plus a neutral for "Other". */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-6: #008300;
+    --series-7: #6250d6;
+    --series-other: #9a9893;
     color-scheme: light dark;
 }
 
@@ -28,6 +37,14 @@
         --bad: #f87171;
         --info: #6c9cff;
         --row-alt: #20252d;
+        --series-1: #3987e5;
+        --series-2: #d95926;
+        --series-3: #199e70;
+        --series-4: #c98500;
+        --series-5: #d55181;
+        --series-6: #008300;
+        --series-7: #9085e9;
+        --series-other: #6f6e69;
     }
 }
 
@@ -343,6 +360,67 @@ ul.checks ul {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    margin: 1rem 0;
+}
+
+.segmented {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.segmented a {
+    padding: 0.25rem 0.75rem;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.segmented a + a {
+    border-left: 1px solid var(--border);
+}
+
+.segmented a:hover,
+.segmented a.active {
+    color: var(--text);
+    background: var(--bg);
+}
+
+.segmented a.active {
+    font-weight: 600;
+}
+
+.chart {
+    min-height: 280px;
+}
+
+th.num,
+td.num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    border-color: var(--accent);
 }
 
 @media (max-width: 40rem) {

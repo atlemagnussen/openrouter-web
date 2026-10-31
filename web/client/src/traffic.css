@@ -1,0 +1,18 @@
+/* uPlot chrome in the page's colours. */
+.chart .u-legend {
+    color: var(--text);
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.chart .u-legend .u-marker {
+    border-radius: 2px;
+}
+
+.chart .u-legend tr.u-off {
+    opacity: 0.4;
+}
+
+.chart .u-select {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+}

@@ -6,6 +6,7 @@ using OpenRouter.Web.Network;
 using OpenRouter.Web.Probes;
 using OpenRouter.Web.Radvd;
 using OpenRouter.Web.Systemd;
+using OpenRouter.Web.Traffic;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,10 @@ builder.Services.AddSingleton<KernelReader>();
 builder.Services.AddSingleton<SystemdService>();
 builder.Services.AddSingleton<FirewallService>();
 builder.Services.AddSingleton<ProbeService>();
+builder.Services.AddSingleton<NftService>();
+builder.Services.AddSingleton<TrafficStore>();
+builder.Services.AddSingleton<TrafficStatus>();
+builder.Services.AddHostedService<TrafficSampler>();
 
 builder.Services.AddRazorPages();
 

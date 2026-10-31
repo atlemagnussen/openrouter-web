@@ -23,7 +23,7 @@ with systemd `.link` files and configured with ifupdown (`/etc/network/interface
 | WAN DHCP + IPv6 prefix delegation | dhcpcd (assigns a /64 from the ISP's delegated prefix to the LAN) | `ip -j addr`, dhcpcd state |
 | Who is online | Kernel neighbour table | `ip -j neigh` (IPv4 + IPv6, no root needed) |
 | DNS | bind9, local zones + forwarders | not managed yet |
-| Firewall / NAT | nftables, `/etc/nftables.conf` | not managed yet |
+| Firewall / NAT | nftables, `/etc/nftables.conf` | text check on the Health page; table `inet acct` counts bytes per LAN address for the Traffic page (README) |
 
 Facts that shape the code:
 - **Kea 2.6 has no `host_cmds` hook**, so reservations can't be changed through the API.
@@ -45,6 +45,10 @@ Facts that shape the code:
 - .NET 10, ASP.NET Core **Razor Pages** (not Blazor, not MVC controllers, no SPA).
   Server-rendered HTML; forms post back to page handlers. If something needs to update live,
   use htmx partials rather than adding a JS framework.
+- Charts and other browser code are TypeScript in `web/client/` (Vite, uPlot), built into
+  `OpenRouter.Web/wwwroot/dist/` (gitignored) with stable file names; pages include them with
+  `asp-append-version`. Scripts enhance server-rendered pages and fetch JSON from page handlers
+  (`?handler=...`); they don't take over the page. Chart colours come from `--series-*` tokens in `site.css`.
 - Plain CSS in `wwwroot/css/site.css` with light/dark colour tokens on `:root`. No Bootstrap,
   no jQuery, no CDN assets (the router may be offline).
 - Nullable enabled, file-scoped namespaces, records for data models, `sealed` by default.
@@ -55,6 +59,7 @@ Facts that shape the code:
   File, socket and process access lives in thin services around them.
 - Avoid new NuGet packages unless they clearly earn their place. The framework already
   covers JSON, cookie auth, password hashing, hosted services and options.
+  `Microsoft.Data.Sqlite` (traffic history) is the one exception so far.
 - Run external commands with `ProcessStartInfo.ArgumentList`, never by concatenating a
   command string, and never pass user input to a shell.
 
@@ -68,6 +73,12 @@ Facts that shape the code:
 - `Health/`: the Health page's checks. Each area (`DhcpHealth`, `Ipv6Health`, `LinkHealth`, ...) is a
   pure function from loaded data to `HealthCheck`s with a status, summary and advice; `HealthReport`
   assembles them. New automatic checks go here, with tests in `HealthCheckTests`.
+- `Traffic/`: per-client traffic history. `TrafficSampler` (a hosted service) reads `nft -j list table
+  inet acct` (`NftService`, via sudo) and interface byte counters every minute; `TrafficAttribution`
+  turns counter increases into per-device bytes (by MAC, through `ClientDirectory`); `TrafficStore`
+  keeps them in SQLite (one row per device per minute, monthly archive files, `VACUUM INTO` snapshots);
+  `TrafficSeriesBuilder` makes chart series. In Development, `SampleTrafficSeeder` fills an empty
+  database with made-up traffic instead of sampling.
 - `Clients/`: `ClientDirectory` merges the neighbour table with Kea reservations and leases by MAC.
 - `Pages/`: Razor Pages. Page models derive from `RouterPageModel` and load data through
   `TryLoadAsync`, so an unreadable source shows as a message on the page instead of an error page.
@@ -82,8 +93,9 @@ Facts that shape the code:
   It reaches Kea through its control socket (group `_kea`). The Health page needs nothing more:
   `/proc`, `/sys`, `ip` and `systemctl show` are unprivileged, and ping uses unprivileged ICMP
   sockets (`net.ipv4.ping_group_range`, open to all users on Debian). It gets other privileged
-  actions only through narrow, explicit grants (e.g. sudoers for one exact
-  `systemctl reload radvd`).
+  actions only through narrow, explicit grants: sudoers for one exact command each, run with
+  `sudo -n` (so far `/usr/sbin/nft -j list table inet acct`; planned `systemctl reload radvd`).
+  The README lists every grant the router needs; keep it up to date.
 - Every config change is: back up the current file → write the new one → validate with the
   service's own checker → apply → on failure restore the backup. Never leave a service
   running on an unvalidated config.
@@ -100,7 +112,10 @@ Run from `web/`:
 dotnet build
 dotnet test
 dotnet run --project OpenRouter.Web      # http://localhost:4000, Development, uses samples/
+cd client && npm run dev                 # rebuild the TypeScript client on change
 ```
+
+`dotnet build` builds the client when `wwwroot/dist` is missing; Release builds always rebuild it.
 
 Deployment (planned): `dotnet publish -c Release -r linux-x64 --self-contained` to
 `/opt/openrouter-web`, run by a systemd unit as the `openrouter` user. The root

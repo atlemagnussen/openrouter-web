@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Data.Common;
 using System.Net.Sockets;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -20,7 +21,7 @@ public abstract class RouterPageModel(ILogger logger) : PageModel
             return await load();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException
-            or JsonException or InvalidOperationException or SocketException or Win32Exception)
+            or JsonException or InvalidOperationException or SocketException or Win32Exception or DbException)
         {
             logger.LogWarning(ex, "Could not read {Source}", source);
             // Pages may load several sources in parallel.

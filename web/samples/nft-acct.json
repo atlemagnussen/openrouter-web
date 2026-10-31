@@ -1,0 +1,26 @@
+{"nftables": [
+  {"metainfo": {"version": "1.1.3", "release_name": "Commodore Bullmoose #4", "json_schema_version": 1}},
+  {"table": {"family": "inet", "name": "acct", "handle": 7}},
+  {"set": {"family": "inet", "name": "up4", "table": "acct", "type": "ipv4_addr", "handle": 1, "size": 65535, "flags": ["timeout", "dynamic"], "timeout": 86400,
+    "elem": [
+      {"elem": {"val": "192.168.1.10", "timeout": 86400, "expires": 86391, "counter": {"packets": 912231, "bytes": 301229871}}},
+      {"elem": {"val": "192.168.1.104", "timeout": 86400, "expires": 86012, "counter": {"packets": 1022, "bytes": 88123}}},
+      {"elem": {"val": "192.168.2.101", "timeout": 86400, "expires": 86399, "counter": {"packets": 40211, "bytes": 12871002}}}
+    ]}},
+  {"set": {"family": "inet", "name": "down4", "table": "acct", "type": "ipv4_addr", "handle": 2, "size": 65535, "flags": ["timeout", "dynamic"], "timeout": 86400,
+    "elem": [
+      {"elem": {"val": "192.168.1.10", "timeout": 86400, "expires": 86391, "counter": {"packets": 2310992, "bytes": 3012298710}}},
+      {"elem": {"val": "192.168.1.104", "timeout": 86400, "expires": 86012, "counter": {"packets": 30112, "bytes": 40911223}}},
+      {"elem": {"val": "192.168.2.101", "timeout": 86400, "expires": 86399, "counter": {"packets": 92233, "bytes": 129112003}}}
+    ]}},
+  {"set": {"family": "inet", "name": "up6", "table": "acct", "type": "ipv6_addr", "handle": 3, "size": 65535, "flags": ["timeout", "dynamic"], "timeout": 86400,
+    "elem": [
+      {"elem": {"val": "2001:db8:1234:e701:a1b2:c3d4:e5f6:1010", "timeout": 86400, "expires": 86390, "counter": {"packets": 50120, "bytes": 9120331}}}
+    ]}},
+  {"set": {"family": "inet", "name": "down6", "table": "acct", "type": "ipv6_addr", "handle": 4, "size": 65535, "flags": ["timeout", "dynamic"], "timeout": 86400,
+    "elem": [
+      {"elem": {"val": "2001:db8:1234:e701:a1b2:c3d4:e5f6:1010", "timeout": 86400, "expires": 86390, "counter": {"packets": 220311, "bytes": 301229001}}},
+      {"elem": {"val": "2001:db8:1234:e701:dead:beef:0:1", "timeout": 86400, "expires": 1200, "counter": {"packets": 12, "bytes": 9001}}}
+    ]}},
+  {"chain": {"family": "inet", "table": "acct", "name": "forward", "handle": 5, "type": "filter", "hook": "forward", "prio": -10, "policy": "accept"}}
+]}

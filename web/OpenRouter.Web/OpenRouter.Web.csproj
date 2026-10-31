@@ -6,4 +6,28 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
+  </ItemGroup>
+
+  <!--
+    The TypeScript client (../client) builds into wwwroot/dist, which isn't in git.
+    Release builds always rebuild it; other builds only when it's missing. While developing,
+    run `npm run dev` in ../client to rebuild on every change.
+  -->
+  <PropertyGroup>
+    <ClientDir>$(MSBuildProjectDirectory)/../client/</ClientDir>
+    <ClientDist>$(MSBuildProjectDirectory)/wwwroot/dist/</ClientDist>
+  </PropertyGroup>
+
+  <Target Name="BuildClient" BeforeTargets="BeforeBuild"
+          Condition="'$(Configuration)' == 'Release' Or !Exists('$(ClientDist)traffic.js')">
+    <Exec Command="npm ci" WorkingDirectory="$(ClientDir)" Condition="!Exists('$(ClientDir)node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(ClientDir)" />
+    <!-- Files created during the build weren't there when MSBuild collected wwwroot, so add them as static assets. -->
+    <ItemGroup>
+      <Content Include="wwwroot/dist/**" Exclude="@(Content)" />
+    </ItemGroup>
+  </Target>
+
 </Project>

@@ -39,4 +39,18 @@ public static class Format
         }
         return unit == 0 ? $"{bytes} B" : $"{value:0.##} {units[unit]}";
     }
+
+    /// <summary>"850 kbit/s", "12.4 Mbit/s", "1.02 Gbit/s".</summary>
+    public static string BitRate(double bitsPerSecond)
+    {
+        string[] units = ["bit/s", "kbit/s", "Mbit/s", "Gbit/s"];
+        var value = bitsPerSecond;
+        var unit = 0;
+        while (value >= 1000 && unit < units.Length - 1)
+        {
+            value /= 1000;
+            unit++;
+        }
+        return unit == 0 ? $"{value:0} {units[0]}" : $"{value:0.##} {units[unit]}";
+    }
 }

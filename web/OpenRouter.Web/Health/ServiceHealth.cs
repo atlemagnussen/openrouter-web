@@ -29,8 +29,8 @@ public static class ServiceHealth
                 _ when unit.Restarts > 0 => new(name, Warning,
                     $"Running{running}, after systemd restarted it {unit.Restarts} time{(unit.Restarts == 1 ? "" : "s")}.",
                     $"The service crashed or exited and was restarted automatically; clients lose that service for a moment each time. {logs}"),
-                _ when now - unit.ActiveSince < TimeSpan.FromHours(1) => new(name, Info,
-                    $"Started {Format.Duration(now - unit.ActiveSince.Value)} ago.", "A recent restart; fine if you did it."),
+                _ when unit.ActiveSince is { } since && now - since < TimeSpan.FromHours(1) => new(name, Info,
+                    $"Started {Format.Duration(now - since)} ago.", "A recent restart; fine if you did it."),
                 _ => new(name, Ok, unit.SubState == "exited" ? $"Loaded{running}." : $"Running{running}."),
             };
         }

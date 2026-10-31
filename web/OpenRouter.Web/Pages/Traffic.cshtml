@@ -1,0 +1,157 @@
+@page
+@using OpenRouter.Web.Traffic
+@model TrafficModel
+@{
+    ViewData["Title"] = "Traffic";
+    var direction = Model.SelectedDirection == TrafficDirection.Up ? "up" : "down";
+    var status = Model.Status;
+}
+
+<h1>Traffic</h1>
+<p class="muted">
+    Traffic through the router per device, sampled every minute. Traffic between two devices on the same
+    network doesn't pass the router and isn't counted.
+</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+@if (Model.IsSampleData)
+{
+    <p class="alert">Development: showing made-up traffic for the sample devices.</p>
+}
+else if (!Model.Options.TrafficSampling)
+{
+    <p class="alert">Traffic sampling is turned off (<code>Router:TrafficSampling</code>).</p>
+}
+else if (status.LastError is not null && status.LastErrorAt == status.LastSample)
+{
+    <p class="alert">
+        The last sample had problems: @status.LastError<br />
+        <span class="small">See "Traffic accounting" in the README for the nftables table and sudoers line it needs.</span>
+    </p>
+}
+
+<div class="toolbar">
+    <nav class="segmented" aria-label="Time range">
+        @foreach (var range in TrafficRange.All)
+        {
+            <a href="@Model.LinkTo(range: range.Key)" class="@(range == Model.SelectedRange ? "active" : "")"
+               aria-current="@(range == Model.SelectedRange ? "true" : null)">@range.Key</a>
+        }
+    </nav>
+    <nav class="segmented" aria-label="Direction">
+        <a href="@Model.LinkTo(direction: "down")" class="@(direction == "down" ? "active" : "")">Download</a>
+        <a href="@Model.LinkTo(direction: "up")" class="@(direction == "up" ? "active" : "")">Upload</a>
+    </nav>
+    @if (status.LastSample is { } last && !Model.IsSampleData)
+    {
+        <span class="muted small">Last sample @Format.Relative(last, Model.Now)</span>
+    }
+</div>
+
+<div id="traffic" data-series-url="@Url.Page("/Traffic", "Series", new { range = Model.SelectedRange.Key, direction })"
+     data-direction="@direction">
+    <section class="card">
+        <h2>Internet <span class="muted small" data-wan-interface></span></h2>
+        <div class="chart" data-chart="wan" role="img" aria-label="Download and upload through the WAN over the last @Model.SelectedRange.Label"></div>
+    </section>
+    <section class="card">
+        <h2>By device: @(direction == "up" ? "upload" : "download")</h2>
+        <p class="muted small">The 7 busiest devices in this range, stacked; the rest are summed as "Other". Click a name to hide it.</p>
+        <div class="chart" data-chart="clients" role="img" aria-label="Traffic per device over the last @Model.SelectedRange.Label"></div>
+    </section>
+    <p class="muted small" data-chart-error hidden></p>
+</div>
+
+<h2>Devices, last @Model.SelectedRange.Label <span class="count">@Model.Totals.Count</span></h2>
+@if (Model.Totals.Count == 0)
+{
+    <p class="muted">No traffic recorded in this range.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Network</th>
+                    <th class="num">Downloaded</th>
+                    <th class="num">Uploaded</th>
+                    <th class="num">Peak down</th>
+                    <th class="num">Peak up</th>
+                    <th>Last seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var client in Model.Totals)
+                {
+                    <tr>
+                        <td>
+                            @if (client.Key == TrafficAttribution.UnknownKey)
+                            {
+                                <span class="muted">Unknown addresses</span>
+                            }
+                            else
+                            {
+                                @(client.Name ?? "—")
+                                <div class="mono small muted">@client.Key</div>
+                            }
+                        </td>
+                        <td>@(client.Network ?? "—")</td>
+                        <td class="num">@Format.Bytes(client.DownBytes)</td>
+                        <td class="num">@Format.Bytes(client.UpBytes)</td>
+                        <td class="num">@Format.BitRate(client.PeakDownBitsPerSecond)</td>
+                        <td class="num">@Format.BitRate(client.PeakUpBitsPerSecond)</td>
+                        <td>@Format.Relative(client.LastSeen, Model.Now)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="muted small">Peaks are the busiest single minute.</p>
+}
+
+@if (Model.Info is { } info)
+{
+    <section class="card">
+        <h2>History database</h2>
+        <dl class="facts">
+            <dt>File</dt>
+            <dd class="mono">@info.Path <span class="muted">(@Format.Bytes(info.SizeBytes))</span></dd>
+            <dt>Covers</dt>
+            <dd>
+                @if (info.Oldest is { } oldest && info.Newest is { } newest)
+                {
+                    @($"{oldest.ToLocalTime():yyyy-MM-dd HH:mm} – {newest.ToLocalTime():yyyy-MM-dd HH:mm}")
+                }
+                else
+                {
+                    <span class="muted">nothing yet</span>
+                }
+            </dd>
+            <dt>Rows</dt>
+            <dd>@info.ClientRows.ToString("N0") device-minutes, @info.LinkRows.ToString("N0") interface-minutes, @info.Clients devices</dd>
+            <dt>Archiving</dt>
+            <dd>
+                @if (Model.Options.TrafficArchiveAfterDays is { } days)
+                {
+                    @($"Months older than {days} days move to monthly files in ")<span class="mono">@Model.Options.TrafficArchiveDir</span>
+                }
+                else
+                {
+                    @("Off: everything stays in the live database.")
+                }
+            </dd>
+        </dl>
+        <form method="post" asp-page-handler="Snapshot">
+            <button type="submit">Download a snapshot</button>
+            <span class="muted small">A consistent copy of the live database, to open in sqlite3 or a notebook.</span>
+        </form>
+    </section>
+}
+
+@section Scripts {
+    <link rel="stylesheet" href="~/dist/traffic.css" asp-append-version="true" />
+    <script type="module" src="~/dist/traffic.js" asp-append-version="true"></script>
+}
