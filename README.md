@@ -50,6 +50,26 @@ The app runs as an unprivileged user (planned: `openrouter`; while testing, your
 Everything below is what that user needs. Replace `openrouter` with the user that runs the app,
 and `eth1`/`eth2` with your LAN and guest interface names.
 
+### The app's user
+
+Create a system user without a login shell or password. It owns only the app's data directory, and
+gets everything else through the grants below.
+
+```sh
+sudo adduser --system --group --home /var/lib/openrouter-web --shell /usr/sbin/nologin openrouter
+sudo chmod 750 /var/lib/openrouter-web
+```
+
+This creates the `openrouter` user and group and the home directory `/var/lib/openrouter-web`, which
+also holds the traffic database. After the steps below, check its groups with `id openrouter`. It
+should be in `openrouter` and `_kea`.
+
+To try something as that user, for example the Kea and sudo tests below:
+
+```sh
+sudo -u openrouter <command>
+```
+
 ### Read access (Clients, Leases, DHCP, IPv6, Health)
 
 Most of what the app reads is world-readable: `/etc/kea/kea-dhcp4.conf`, `/etc/radvd.conf`,
@@ -141,13 +161,14 @@ Test it as that user: `sudo -n /usr/sbin/nft -j list table inet acct` must print
 for a password. If the app runs under systemd, the unit must not set `NoNewPrivileges=true`, or sudo
 can't work.
 
-**3. A data directory** for the traffic history (SQLite):
+**3. A data directory** for the traffic history (SQLite). `adduser` above already created it as the
+user's home. If you run the app as another user while testing, create it yourself:
 
 ```sh
-sudo install -d -o openrouter -g openrouter -m 750 /var/lib/openrouter-web
+sudo install -d -o "$USER" -g "$USER" -m 750 /var/lib/openrouter-web
 ```
 
-(A systemd unit with `StateDirectory=openrouter-web` creates it for you.)
+(A systemd unit with `StateDirectory=openrouter-web` also creates it.)
 
 The database grows by roughly one row per active device per minute. Settings (`Router` section in
 `appsettings.json`):
