@@ -5,19 +5,5 @@ Should work on both Linux and BSD
 
 ## Requirements
 
-- Running [ISC DHCP server](https://www.isc.org/dhcp/)
+- Running [KEA DHCP server](https://www.isc.org/kea/)
 - [Fping tool](https://fping.org/) installed
-
-## Run in production
-
-```sh
-npm run build
-```
-
-then use systemd using `openrouter.service` file  
-
-or use bash script:
-
-```sh
-./start-prod.sh
-```
