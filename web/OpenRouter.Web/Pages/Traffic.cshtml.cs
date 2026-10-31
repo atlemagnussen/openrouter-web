@@ -10,6 +10,7 @@ namespace OpenRouter.Web.Pages;
 public sealed class TrafficModel(
     TrafficStore store,
     TrafficStatus status,
+    TrafficEvents events,
     KeaService kea,
     IOptions<RouterOptions> options,
     TimeProvider time,
@@ -60,6 +61,18 @@ public sealed class TrafficModel(
             return new ObjectResult(new { error = ex.Message }) { StatusCode = StatusCodes.Status503ServiceUnavailable };
         }
     }
+
+    /// <summary>The devices table on its own, for the page's script to swap in when a new minute is stored.</summary>
+    public async Task<IActionResult> OnGetTableAsync(CancellationToken cancellationToken)
+    {
+        Now = time.GetUtcNow();
+        var (from, to) = SelectedRange.Window(Now);
+        Totals = await TryLoadAsync("the traffic database", () => store.GetClientTotalsAsync(from, to, cancellationToken)) ?? [];
+        return Partial("_TrafficDevices", this);
+    }
+
+    /// <summary>The live points of the last few minutes, so the live chart starts full.</summary>
+    public IActionResult OnGetLive() => new JsonResult(events.RecentLive);
 
     /// <summary>Downloads a consistent copy of the live traffic database, e.g. to analyse on another machine.</summary>
     public async Task<IActionResult> OnPostSnapshotAsync(CancellationToken cancellationToken)

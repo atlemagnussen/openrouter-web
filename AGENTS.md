@@ -74,7 +74,10 @@ Facts that shape the code:
   pure function from loaded data to `HealthCheck`s with a status, summary and advice; `HealthReport`
   assembles them. New automatic checks go here, with tests in `HealthCheckTests`.
 - `Traffic/`: per-client traffic history. `TrafficSampler` (a hosted service) reads `nft -j list table
-  inet acct` (`NftService`, via sudo) and interface byte counters every minute; `TrafficAttribution`
+  inet acct` (`NftService`, via sudo) and interface byte counters every `TrafficLiveSeconds` (5 s),
+  publishes live rates and adds the increases up into whole minutes; `TrafficEvents` pushes `live` and
+  `minute` updates to open pages over Server-Sent Events (`/traffic/events`, a minimal endpoint in
+  `Program.cs`), and the page script reloads charts and the devices table (a partial) on `minute`; `TrafficAttribution`
   turns counter increases into per-device bytes (by MAC, through `ClientDirectory`); `TrafficStore`
   keeps them in SQLite (one row per device per minute, monthly archive files, `VACUUM INTO` snapshots);
   `TrafficSeriesBuilder` makes chart series. In Development, `SampleTrafficSeeder` fills an empty
@@ -117,6 +120,8 @@ cd client && npm run dev                 # rebuild the TypeScript client on chan
 
 `dotnet build` builds the client when `wwwroot/dist` is missing; Release builds always rebuild it.
 
-Deployment (planned): `dotnet publish -c Release -r linux-x64 --self-contained` to
-`/opt/openrouter-web`, run by a systemd unit as the `openrouter` user. The root
-`openrouter.service` and `start-prod.sh` belong to the old app.
+Deployment: `web/publish.sh` builds the client and a self-contained Release build, installs it to
+`/opt/openrouter-web` and restarts the `openrouter-web` systemd service
+(`web/openrouter-web.service`, runs as the `openrouter` user). Keep that unit free of options that imply
+`NoNewPrivileges`, or sudo stops working. The root `openrouter.service` and `start-prod.sh` belong to the
+old app.

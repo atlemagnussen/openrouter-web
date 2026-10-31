@@ -46,6 +46,14 @@ public sealed class RouterOptions
     /// <summary>Sample per-client traffic every minute. Needs the acct table and sudoers line from the README.</summary>
     public bool TrafficSampling { get; set; } = true;
 
+    /// <summary>
+    /// How often to read the traffic counters for the live chart, in seconds (each reading is one
+    /// <c>sudo nft</c> call). The database still gets one row per device per minute. 0 turns the live chart
+    /// off and reads once a minute.
+    /// </summary>
+    [Range(0, 60)]
+    public int TrafficLiveSeconds { get; set; } = 5;
+
     /// <summary>SQLite database holding the traffic history.</summary>
     [Required]
     public string TrafficDatabasePath { get; set; } = "/var/lib/openrouter-web/traffic.db";

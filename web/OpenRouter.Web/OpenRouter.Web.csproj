@@ -20,8 +20,9 @@
     <ClientDist>$(MSBuildProjectDirectory)/wwwroot/dist/</ClientDist>
   </PropertyGroup>
 
+  <!-- publish.sh builds the client itself and passes -p:SkipClientBuild=true. -->
   <Target Name="BuildClient" BeforeTargets="BeforeBuild"
-          Condition="'$(Configuration)' == 'Release' Or !Exists('$(ClientDist)traffic.js')">
+          Condition="'$(SkipClientBuild)' != 'true' And ('$(Configuration)' == 'Release' Or !Exists('$(ClientDist)traffic.js'))">
     <Exec Command="npm ci" WorkingDirectory="$(ClientDir)" Condition="!Exists('$(ClientDir)node_modules')" />
     <Exec Command="npm run build" WorkingDirectory="$(ClientDir)" />
     <!-- Files created during the build weren't there when MSBuild collected wwwroot, so add them as static assets. -->

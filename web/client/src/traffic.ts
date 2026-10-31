@@ -1,8 +1,10 @@
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import "./traffic.css";
-import { bitRate, bitRateShort } from "./format";
+import { bitRate } from "./format";
+import { LiveView } from "./live";
 import { stack, type Column } from "./stack";
+import { baseOptions, line, readTheme, timeValue, withAlpha, type Theme } from "./theme";
 
 /** Matches TrafficSeries in OpenRouter.Web/Traffic (camelCase JSON). Rates are bits per second. */
 interface TrafficSeries {
@@ -28,6 +30,7 @@ const Height = 280;
 
 class TrafficView {
     private readonly url: string;
+    private readonly tableUrl: string;
     private readonly wanEl: HTMLElement;
     private readonly clientsEl: HTMLElement;
     private readonly errorEl: HTMLElement | null;
@@ -38,6 +41,7 @@ class TrafficView {
 
     constructor(private readonly root: HTMLElement) {
         this.url = root.dataset.seriesUrl!;
+        this.tableUrl = root.dataset.tableUrl!;
         this.wanEl = root.querySelector<HTMLElement>("[data-chart=wan]")!;
         this.clientsEl = root.querySelector<HTMLElement>("[data-chart=clients]")!;
         this.errorEl = root.querySelector<HTMLElement>("[data-chart-error]");
@@ -54,6 +58,14 @@ class TrafficView {
         } catch (error) {
             this.showError(`Could not load chart data: ${error instanceof Error ? error.message : error}`);
         }
+    }
+
+    /** Swaps in the server-rendered devices table for the current range. */
+    async loadTable(): Promise<void> {
+        const container = document.querySelector<HTMLElement>("[data-devices]");
+        if (!container) return;
+        const response = await fetch(this.tableUrl);
+        if (response.ok) container.innerHTML = await response.text();
     }
 
     /** Recreates the charts, e.g. after the colour scheme changed. */
@@ -158,78 +170,37 @@ class TrafficView {
 
 type RawData = uPlot & { raw?: Column[] };
 
+
 function rawValue(u: uPlot, seriesIndex: number, index: number): number | null {
     return (u as RawData).raw?.[seriesIndex - 1]?.[index] ?? null;
 }
 
-interface Theme {
-    series: string[];
-    other: string;
-    surface: string;
-    text: string;
-    muted: string;
-    grid: string;
-}
-
-/** Colours come from the CSS tokens in site.css, so light and dark mode follow the page. */
-function readTheme(): Theme {
-    const style = getComputedStyle(document.documentElement);
-    const token = (name: string) => style.getPropertyValue(name).trim();
-    return {
-        series: [1, 2, 3, 4, 5, 6, 7].map(i => token(`--series-${i}`)),
-        other: token("--series-other"),
-        surface: token("--surface"),
-        text: token("--text"),
-        muted: token("--muted"),
-        grid: token("--border"),
-    };
-}
-
-function baseOptions(theme: Theme, width: number): Omit<uPlot.Options, "series"> {
-    const axis = (values?: uPlot.Axis["values"]): uPlot.Axis => ({
-        stroke: theme.muted,
-        grid: { stroke: theme.grid, width: 1 },
-        ticks: { stroke: theme.grid, width: 1 },
-        values,
-    });
-    return {
-        width: Math.max(width, 200),
-        height: Height,
-        cursor: { points: { size: 8 }, drag: { x: true, y: false } },
-        scales: { y: { range: (_u, _min, max) => [0, max > 0 ? max * 1.1 : 1] } },
-        axes: [axis(), { ...axis((_u, splits) => splits.map(v => bitRateShort(v))), size: 56 }],
-        legend: { live: true },
-    };
-}
-
-function line(label: string, color: string, theme: Theme): uPlot.Series {
-    return {
-        label,
-        stroke: color,
-        width: 2,
-        fill: withAlpha(color, 0.08),
-        value: (_u, value) => bitRate(value),
-        points: { size: 8, stroke: color, fill: theme.surface },
-    };
-}
-
-function timeValue(_u: uPlot, value: number | null): string {
-    if (value == null) return "–";
-    return new Date(value * 1000).toLocaleString(undefined, {
-        weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-    });
-}
-
-/** "#2a78d6" + 0.85 → "rgba(42, 120, 214, 0.85)". */
-function withAlpha(hex: string, alpha: number): string {
-    const value = parseInt(hex.replace("#", ""), 16);
-    return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
-}
-
 const root = document.getElementById("traffic");
-if (root) {
-    const view = new TrafficView(root);
-    void view.load();
-    setInterval(() => void view.load(), RefreshMs);
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => view.rebuild());
-}
+const liveRoot = document.getElementById("traffic-live");
+const history = root ? new TrafficView(root) : undefined;
+const live = liveRoot && !liveRoot.hidden ? new LiveView(liveRoot) : undefined;
+void history?.load();
+void live?.load();
+
+// The server says when a new minute is stored ("minute") and sends live rates ("live").
+const eventsUrl = liveRoot?.dataset.eventsUrl;
+const events = eventsUrl ? new EventSource(eventsUrl) : undefined;
+events?.addEventListener("minute", () => {
+    void history?.load();
+    void history?.loadTable();
+});
+events?.addEventListener("live", e => live?.add(JSON.parse((e as MessageEvent<string>).data)));
+events?.addEventListener("ready", () => live?.setConnected(true));
+events?.addEventListener("error", () => live?.setConnected(false)); // EventSource reconnects by itself.
+
+// Fallback while the event stream is down.
+setInterval(() => {
+    if (events?.readyState === EventSource.OPEN) return;
+    void history?.load();
+    void history?.loadTable();
+}, RefreshMs);
+
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    history?.rebuild();
+    live?.rebuild();
+});

@@ -1,0 +1,39 @@
+# OpenRouter Web as a systemd service. Install (see README, "Running as a service"):
+#   sudo cp openrouter-web.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now openrouter-web
+# Change the listen address with `sudo systemctl edit openrouter-web` rather than editing this file.
+
+[Unit]
+Description=OpenRouter Web (router admin pages)
+Wants=network-online.target
+After=network-online.target kea-dhcp4-server.service
+
+[Service]
+Type=exec
+User=openrouter
+Group=openrouter
+WorkingDirectory=/opt/openrouter-web
+ExecStart=/opt/openrouter-web/OpenRouter.Web
+# LAN address only: not reachable from the WAN or the guest network.
+Environment=ASPNETCORE_URLS=http://192.168.1.1:4000
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_NOLOGO=1
+
+# Creates /var/lib/openrouter-web (traffic database) owned by the service user.
+StateDirectory=openrouter-web
+StateDirectoryMode=0750
+
+Restart=on-failure
+RestartSec=5
+
+# Hardening that still lets the app run `sudo nft -j list table inet acct`. sudo needs setuid, so
+# don't add NoNewPrivileges= or any option systemd makes imply it for a non-root User=: SystemCallFilter=,
+# RestrictSUIDSGID=, ProtectKernelModules=, ProtectKernelTunables=, ProtectKernelLogs=, ProtectClock=,
+# PrivateDevices=, RestrictNamespaces=, RestrictAddressFamilies=, MemoryDenyWriteExecute=, LockPersonality=.
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

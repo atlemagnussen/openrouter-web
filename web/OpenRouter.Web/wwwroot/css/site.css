@@ -402,6 +402,41 @@ ul.checks ul {
     min-height: 280px;
 }
 
+.chart-live {
+    min-height: 200px;
+    min-width: 0;
+}
+
+.live-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    gap: 1.5rem;
+}
+
+.live-grid h3 {
+    margin-top: 0;
+}
+
+table.live-now td,
+table.live-now th {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.9rem;
+}
+
+.live-state::before {
+    content: "";
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0 0.35rem 0 0.25rem;
+    border-radius: 50%;
+    background: var(--muted);
+}
+
+.live-state.connected::before {
+    background: var(--ok);
+}
+
 th.num,
 td.num {
     text-align: right;
@@ -421,6 +456,12 @@ button {
 
 button:hover {
     border-color: var(--accent);
+}
+
+@media (max-width: 52rem) {
+    .live-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 40rem) {

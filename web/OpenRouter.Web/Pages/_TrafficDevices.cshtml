@@ -1,0 +1,51 @@
+@using OpenRouter.Web.Traffic
+@model TrafficModel
+
+<h2>Devices, last @Model.SelectedRange.Label <span class="count">@Model.Totals.Count</span></h2>
+@if (Model.Totals.Count == 0)
+{
+    <p class="muted">No traffic recorded in this range.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Network</th>
+                    <th class="num">Downloaded</th>
+                    <th class="num">Uploaded</th>
+                    <th class="num">Peak down</th>
+                    <th class="num">Peak up</th>
+                    <th>Last seen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var client in Model.Totals)
+                {
+                    <tr>
+                        <td>
+                            @if (client.Key == TrafficAttribution.UnknownKey)
+                            {
+                                <span class="muted">Unknown addresses</span>
+                            }
+                            else
+                            {
+                                @(client.Name ?? "—")
+                                <div class="mono small muted">@client.Key</div>
+                            }
+                        </td>
+                        <td>@(client.Network ?? "—")</td>
+                        <td class="num">@Format.Bytes(client.DownBytes)</td>
+                        <td class="num">@Format.Bytes(client.UpBytes)</td>
+                        <td class="num">@Format.BitRate(client.PeakDownBitsPerSecond)</td>
+                        <td class="num">@Format.BitRate(client.PeakUpBitsPerSecond)</td>
+                        <td>@Format.Relative(client.LastSeen, Model.Now)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="muted small">Peaks are the busiest single minute.</p>
+}

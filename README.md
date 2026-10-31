@@ -158,8 +158,13 @@ sudo visudo -f /etc/sudoers.d/openrouter-web
 ```
 
 ```
+Defaults:openrouter !log_allowed, !pam_session
 openrouter ALL=(root) NOPASSWD: /usr/sbin/nft -j list table inet acct
 ```
+
+The app runs this every 5 seconds for the live chart. The `Defaults` line keeps that out of the logs:
+by default sudo logs every allowed command and opens a PAM session for it ("session opened for user
+root"), which would add about 17,000 lines a day to the journal. Denied commands are still logged.
 
 Test it as that user: `sudo -n /usr/sbin/nft -j list table inet acct` must print JSON without asking
 for a password. If the app runs under systemd, the unit must not set `NoNewPrivileges=true`, or sudo
@@ -183,17 +188,57 @@ The database grows by roughly one row per active device per minute. Settings (`R
 | `TrafficArchiveDir` | `/var/lib/openrouter-web/archive` | monthly archives and snapshots |
 | `TrafficArchiveAfterDays` | not set | move months older than this into `traffic-YYYY-MM.db` archive files; not set = keep everything live |
 | `TrafficSampling` | `true` | turn sampling off |
+| `TrafficLiveSeconds` | `5` | how often the live chart updates (one `sudo nft` call each time); `0` turns the live chart off and reads once a minute |
 | `NftPath` | `/usr/sbin/nft` | must match the sudoers line |
 
 Archive files have the same schema as the live database and open on their own, so they can be copied
 to another machine. The Traffic page can also download a snapshot of the live database at any time
 (SQLite `VACUUM INTO`, safe while the app is writing).
 
-## Deployment (planned)
+## Deployment
+
+Run this on the router from a checkout of the repo. It builds there, so the router needs the .NET 10 SDK
+and Node.js:
 
 ```sh
-cd web
-dotnet publish OpenRouter.Web -c Release -r linux-x64 --self-contained -o /opt/openrouter-web
+web/publish.sh
 ```
 
-Release builds always rebuild the client, so the build machine needs Node.js; the router doesn't.
+It builds the client and the app, replaces `/opt/openrouter-web` (owned by root, read-only for
+everyone else), and restarts the `openrouter-web` service if it's installed.
+
+### Running as a service
+
+[`web/openrouter-web.service`](web/openrouter-web.service) runs the app as the `openrouter` user,
+listening on `http://192.168.1.1:4000`, restarting it if it crashes and starting it at boot. Install it once:
+
+```sh
+sudo cp web/openrouter-web.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now openrouter-web
+```
+
+To listen on another address, override it instead of editing the file, so a newer unit file can be
+copied over later:
+
+```sh
+sudo systemctl edit openrouter-web
+```
+
+```ini
+[Service]
+Environment=ASPNETCORE_URLS=http://192.168.1.1:4000
+```
+
+Day to day:
+
+```sh
+web/publish.sh                            # new version: build, install, restart
+systemctl status openrouter-web
+journalctl -u openrouter-web -f           # logs
+sudo systemctl restart openrouter-web
+```
+
+The unit keeps some systemd hardening (read-only system directories, no access to home directories,
+private /tmp), but nothing that implies `NoNewPrivileges`: the app needs sudo for the one `nft` command.
+Stop the service before running the app by hand with `web/run.sh`, or they'll compete for the port.

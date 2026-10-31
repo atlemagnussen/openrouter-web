@@ -9,7 +9,7 @@
 
 <h1>Traffic</h1>
 <p class="muted">
-    Traffic through the router per device, sampled every minute. Traffic between two devices on the same
+    Traffic through the router per device. History is stored per minute. Traffic between two devices on the same
     network doesn't pass the router and isn't counted.
 </p>
 
@@ -39,6 +39,27 @@ else if (status.LastAddressCount == 0)
     </p>
 }
 
+<section class="card live" id="traffic-live" data-live-url="@Url.Page("/Traffic", "Live")" data-events-url="/traffic/events"
+         hidden="@(Model.Options.TrafficLiveSeconds == 0)">
+    <h2>Live <span class="live-state muted small" data-live-state>connecting…</span></h2>
+    <p class="muted small">Internet traffic over the last @((int)TrafficEvents.LiveWindow.TotalMinutes) minutes, updated every @Model.Options.TrafficLiveSeconds s.</p>
+    <div class="live-grid">
+        <div class="chart chart-live" data-chart="live" role="img" aria-label="Live download and upload through the WAN"></div>
+        <div>
+            <h3>Busiest right now</h3>
+            <table class="live-now">
+                <thead>
+                    <tr><th>Device</th><th class="num">Down</th><th class="num">Up</th></tr>
+                </thead>
+                <tbody data-live-now>
+                    <tr><td colspan="3" class="muted">Waiting for data…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<h2>History</h2>
 <div class="toolbar">
     <nav class="segmented" aria-label="Time range">
         @foreach (var range in TrafficRange.All)
@@ -58,6 +79,7 @@ else if (status.LastAddressCount == 0)
 </div>
 
 <div id="traffic" data-series-url="@Url.Page("/Traffic", "Series", new { range = Model.SelectedRange.Key, direction })"
+     data-table-url="@Url.Page("/Traffic", "Table", new { range = Model.SelectedRange.Key, direction })"
      data-direction="@direction">
     <section class="card">
         <h2>Internet <span class="muted small" data-wan-interface></span></h2>
@@ -71,54 +93,9 @@ else if (status.LastAddressCount == 0)
     <p class="muted small" data-chart-error hidden></p>
 </div>
 
-<h2>Devices, last @Model.SelectedRange.Label <span class="count">@Model.Totals.Count</span></h2>
-@if (Model.Totals.Count == 0)
-{
-    <p class="muted">No traffic recorded in this range.</p>
-}
-else
-{
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>Network</th>
-                    <th class="num">Downloaded</th>
-                    <th class="num">Uploaded</th>
-                    <th class="num">Peak down</th>
-                    <th class="num">Peak up</th>
-                    <th>Last seen</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var client in Model.Totals)
-                {
-                    <tr>
-                        <td>
-                            @if (client.Key == TrafficAttribution.UnknownKey)
-                            {
-                                <span class="muted">Unknown addresses</span>
-                            }
-                            else
-                            {
-                                @(client.Name ?? "—")
-                                <div class="mono small muted">@client.Key</div>
-                            }
-                        </td>
-                        <td>@(client.Network ?? "—")</td>
-                        <td class="num">@Format.Bytes(client.DownBytes)</td>
-                        <td class="num">@Format.Bytes(client.UpBytes)</td>
-                        <td class="num">@Format.BitRate(client.PeakDownBitsPerSecond)</td>
-                        <td class="num">@Format.BitRate(client.PeakUpBitsPerSecond)</td>
-                        <td>@Format.Relative(client.LastSeen, Model.Now)</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-    <p class="muted small">Peaks are the busiest single minute.</p>
-}
+<div data-devices>
+    <partial name="_TrafficDevices" model="Model" />
+</div>
 
 @if (Model.Info is { } info)
 {

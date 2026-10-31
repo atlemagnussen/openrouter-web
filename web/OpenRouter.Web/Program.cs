@@ -29,6 +29,7 @@ builder.Services.AddSingleton<ProbeService>();
 builder.Services.AddSingleton<NftService>();
 builder.Services.AddSingleton<TrafficStore>();
 builder.Services.AddSingleton<TrafficStatus>();
+builder.Services.AddSingleton<TrafficEvents>();
 builder.Services.AddHostedService<TrafficSampler>();
 
 builder.Services.AddRazorPages();
@@ -45,5 +46,14 @@ app.UseRouting();
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
+
+// Server-Sent Events for the Traffic page: "ready" on connecting, "live" every few seconds, "minute" when a minute is stored.
+app.MapGet("/traffic/events", (TrafficEvents events, IHostApplicationLifetime lifetime, HttpContext context) =>
+{
+    // End the stream when the page closes or the app shuts down, so shutdown doesn't wait for open pages.
+    var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, lifetime.ApplicationStopping);
+    context.Response.RegisterForDispose(stop);
+    return TypedResults.ServerSentEvents(events.SubscribeAsync(stop.Token));
+});
 
 app.Run();

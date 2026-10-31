@@ -71,5 +71,36 @@ public static class SampleTrafficSeeder
         await store.WriteAsync(samples, cancellationToken);
     }
 
+    /// <summary>Publishes made-up live points every <paramref name="interval"/>, with a clock that moves even when the app's is stopped.</summary>
+    public static async Task PublishLiveAsync(TrafficEvents events, TimeSpan interval, TimeProvider time, CancellationToken cancellationToken)
+    {
+        var random = new Random(7);
+        var at = time.GetUtcNow() - TrafficEvents.LiveWindow;
+        // Fill the window first, so the live chart doesn't start empty.
+        for (; at < time.GetUtcNow(); at += interval)
+            events.PublishLive(Live(at, interval, random));
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(interval, time, cancellationToken);
+            events.PublishLive(Live(at, interval, random));
+            at += interval;
+        }
+    }
+
+    private static LivePoint Live(DateTimeOffset at, TimeSpan interval, Random random)
+    {
+        var hour = at.ToOffset(TimeSpan.FromHours(1)).Hour;
+        var scale = interval.TotalSeconds / 60;
+        var clients = Devices
+            .Select(d =>
+            {
+                var activity = d.Activity(hour) * (0.2 + random.NextDouble() * 1.6);
+                return new ClientTraffic(d.Mac, d.Name, d.Network, (long)(Bytes(d.DownMbit * activity) * scale), (long)(Bytes(d.UpMbit * activity) * scale));
+            })
+            .ToList();
+        LinkTraffic[] links = [new("eth0", (long)(clients.Sum(c => c.DownBytes) * 1.03), (long)(clients.Sum(c => c.UpBytes) * 1.04))];
+        return LivePoint.Build(at, interval.TotalSeconds, "eth0", links, clients);
+    }
+
     private static long Bytes(double megabitsPerSecond) => (long)(megabitsPerSecond * 1_000_000 / 8 * 60);
 }
