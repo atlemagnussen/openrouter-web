@@ -30,6 +30,14 @@ else if (status.LastError is not null && status.LastErrorAt == status.LastSample
         <span class="small">See "Traffic accounting" in the README for the nftables table and sudoers line it needs.</span>
     </p>
 }
+else if (status.LastAddressCount == 0)
+{
+    <p class="alert">
+        The nftables accounting table can be read, but no addresses have been counted yet, so there is no per-device traffic.
+        Check that the interface names in the <code>acct</code> table's rules are this router's LAN interfaces@(Model.LanInterfaces.Count > 0 ? $" ({string.Join(", ", Model.LanInterfaces)}, from the Kea config)" : ""),
+        and that <code>sudo nft -j list table inet acct</code> shows elements with a <code>"counter"</code>.
+    </p>
+}
 
 <div class="toolbar">
     <nav class="segmented" aria-label="Time range">

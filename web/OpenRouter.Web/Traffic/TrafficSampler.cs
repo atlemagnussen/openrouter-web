@@ -68,7 +68,7 @@ public sealed class TrafficSampler(
         {
             // Never take the web app down with the sampler.
             logger.LogError(ex, "Traffic sampling stopped");
-            status.Sampled(time.GetUtcNow(), null, $"Sampling stopped: {ex.Message}");
+            status.Sampled(time.GetUtcNow(), null, null, $"Sampling stopped: {ex.Message}");
         }
     }
 
@@ -106,8 +106,10 @@ public sealed class TrafficSampler(
         }
 
         IReadOnlyList<ClientTraffic> clients = [];
+        int? addresses = null;
         if (await Try("nftables accounting", () => nft.GetCountersAsync(cancellationToken)) is { } counters)
         {
+            addresses = counters.Count;
             if (_addresses is { } previous && now - previous.At <= MaxGap)
             {
                 var deltas = TrafficAttribution.Deltas(previous.Values, counters);
@@ -127,7 +129,7 @@ public sealed class TrafficSampler(
             await store.WriteAsync([new MinuteSample(minute, clients, links)], cancellationToken);
 
         var error = errors.Count > 0 ? string.Join("; ", errors) : null;
-        status.Sampled(now, clients.Count, error);
+        status.Sampled(now, clients.Count, addresses, error);
         LogError(error, now);
     }
 

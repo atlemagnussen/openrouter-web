@@ -2,6 +2,7 @@ using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using OpenRouter.Web.Configuration;
+using OpenRouter.Web.Kea;
 using OpenRouter.Web.Traffic;
 
 namespace OpenRouter.Web.Pages;
@@ -9,6 +10,7 @@ namespace OpenRouter.Web.Pages;
 public sealed class TrafficModel(
     TrafficStore store,
     TrafficStatus status,
+    KeaService kea,
     IOptions<RouterOptions> options,
     TimeProvider time,
     ILogger<TrafficModel> logger) : RouterPageModel(logger)
@@ -31,12 +33,17 @@ public sealed class TrafficModel(
     public bool IsSampleData => options.Value.SampleDir is not null;
     public DateTimeOffset Now { get; private set; }
 
+    /// <summary>The interfaces Kea serves, for the hint when the accounting table counts nothing.</summary>
+    public IReadOnlyList<string> LanInterfaces { get; private set; } = [];
+
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         Now = time.GetUtcNow();
         var (from, to) = SelectedRange.Window(Now);
         Totals = await TryLoadAsync("the traffic database", () => store.GetClientTotalsAsync(from, to, cancellationToken)) ?? [];
         Info = await TryLoadAsync("the traffic database", () => store.GetInfoAsync(cancellationToken));
+        if (status.Current.LastAddressCount == 0)
+            LanInterfaces = (await TryLoadAsync("the Kea config", () => kea.GetConfigAsync(cancellationToken)))?.InterfaceNames.ToList() ?? [];
     }
 
     /// <summary>Chart data for the page's script: <c>?handler=Series&amp;range=24h&amp;direction=down</c>.</summary>

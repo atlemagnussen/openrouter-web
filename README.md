@@ -114,6 +114,10 @@ changes traffic, so it doesn't interfere with the rest of the firewall.
 ```nft
 # Per-address byte counters for OpenRouter Web's Traffic page.
 # "up" = sent by a LAN device, "down" = received by it. Idle addresses expire after a day.
+# CHANGE THESE to your LAN and guest interfaces (see `ip -br link`, or "interfaces" in kea-dhcp4.conf).
+# If nftables.conf already defines them, reuse those instead: define acct_lans = { $LANLINK, $LANLINKGUEST }
+define acct_lans = { "eth1", "eth2" }
+
 table inet acct {
     set up4   { type ipv4_addr; size 65535; flags dynamic, timeout; timeout 1d; }
     set down4 { type ipv4_addr; size 65535; flags dynamic, timeout; timeout 1d; }
@@ -122,10 +126,10 @@ table inet acct {
 
     chain forward {
         type filter hook forward priority -10; policy accept;
-        iifname { "eth1", "eth2" } update @up4 { ip saddr counter }
-        oifname { "eth1", "eth2" } update @down4 { ip daddr counter }
-        iifname { "eth1", "eth2" } update @up6 { ip6 saddr counter }
-        oifname { "eth1", "eth2" } update @down6 { ip6 daddr counter }
+        iifname $acct_lans update @up4 { ip saddr counter }
+        oifname $acct_lans update @down4 { ip daddr counter }
+        iifname $acct_lans update @up6 { ip6 saddr counter }
+        oifname $acct_lans update @down6 { ip6 daddr counter }
     }
 }
 ```
