@@ -10,6 +10,11 @@ export interface Theme {
     grid: string;
 }
 
+/** A CSS custom property from site.css, e.g. token("--rtt-1"). */
+export function token(name: string): string {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 /** Colours come from the CSS tokens in site.css, so light and dark mode follow the page. */
 export function readTheme(): Theme {
     const style = getComputedStyle(document.documentElement);

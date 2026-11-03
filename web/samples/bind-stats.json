@@ -1,0 +1,34 @@
+{
+  "json-stats-version": "1.8",
+  "boot-time": "2026-10-15T14:00:00.123Z",
+  "config-time": "2026-10-15T14:00:00.201Z",
+  "current-time": "2026-10-18T12:00:00.004Z",
+  "version": "9.20.11-4-Debian",
+  "opcodes": { "QUERY": 1824311, "IQUERY": 0, "STATUS": 0, "NOTIFY": 0, "UPDATE": 0 },
+  "rcodes": { "NOERROR": 1702210, "FORMERR": 3, "SERVFAIL": 4120, "NXDOMAIN": 117902, "NOTIMP": 0, "REFUSED": 76 },
+  "qtypes": { "A": 702113, "AAAA": 688120, "HTTPS": 401237, "PTR": 21310, "SRV": 4120, "TXT": 7411 },
+  "nsstats": {
+    "Requestv4": 1611002, "Requestv6": 213309, "ReqEdns0": 1201003, "ReqTCP": 4102, "Response": 1824311,
+    "QrySuccess": 1702210, "QryAuthAns": 30211, "QryNoauthAns": 1671999, "QryNxrrset": 288121, "QrySERVFAIL": 4120,
+    "QryNXDOMAIN": 117902, "QryRecursion": 902114, "QryDuplicate": 3102, "QryFailure": 79, "RecursClients": 3
+  },
+  "views": {
+    "_default": {
+      "resolver": {
+        "stats": {
+          "Queryv4": 541022, "Queryv6": 82011, "Responsev4": 539002, "Responsev6": 80921, "NXDOMAIN": 40211, "SERVFAIL": 1802,
+          "FORMERR": 0, "Lame": 12, "Retry": 3021, "QueryTimeout": 2102, "ValAttempt": 498012, "ValOk": 410221,
+          "ValNegOk": 87201, "ValFail": 390, "QryRTT10": 201022, "QryRTT100": 330122, "QryRTT500": 81022,
+          "QryRTT800": 4102, "QryRTT1600": 2310, "QryRTT1600+": 1365
+        },
+        "cachestats": { "CacheHits": 3301223, "CacheMisses": 902113, "QueryHits": 921003, "QueryMisses": 623033 }
+      }
+    },
+    "_bind": {
+      "resolver": {
+        "stats": { "Queryv4": 7, "QueryTimeout": 1 },
+        "cachestats": { "QueryHits": 5 }
+      }
+    }
+  }
+}

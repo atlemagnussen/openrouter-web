@@ -1,7 +1,7 @@
 # OpenRouter Web
 
 A web interface for a self-built Debian router, in the spirit of a consumer router's admin pages:
-clients, DHCP leases and reservations, IPv6, per-device traffic and automatic health checks.
+clients, DHCP leases and reservations, IPv6, per-device traffic, DNS statistics and automatic health checks.
 
 It's an ASP.NET Core (.NET 10) Razor Pages app in [`web/`](web/), with a small TypeScript client
 (Vite, uPlot) for the charts. See [AGENTS.md](AGENTS.md) for how the router is set up and how the code
@@ -104,6 +104,38 @@ sudo setfacl -m u:$USER:rw /run/kea/kea4-ctrl-socket
 
 **Ping** (Health page) uses unprivileged ICMP sockets. Debian allows them for everyone; check with
 `sysctl net.ipv4.ping_group_range` (should be `0 2147483647`).
+
+### DNS statistics (DNS page)
+
+The DNS page reads bind's own counters from its **statistics channel**, a small HTTP server inside
+named that only answers on localhost. Add this to `/etc/bind/named.conf.options`, outside the
+`options { }` block:
+
+```
+statistics-channels {
+        inet 127.0.0.1 port 8053 allow { 127.0.0.1; };
+};
+```
+
+```sh
+sudo named-checkconf && sudo systemctl reload named
+curl -s http://127.0.0.1:8053/json/v1 | head -c 300      # JSON starting with "json-stats-version"
+```
+
+It's read-only and doesn't depend on `listen-on`. Nothing else is needed: the app reads
+`named.conf.options` (world-readable on Debian) for the forwarders and listen addresses, and its probes
+are ordinary DNS lookups to bind and to each forwarder.
+
+| Setting | Default | |
+|---|---|---|
+| `BindOptionsPath` | `/etc/bind/named.conf.options` | where the forwarders and listen addresses are read from |
+| `BindStatsUrl` | `http://127.0.0.1:8053/json/v1` | must match `statistics-channels` |
+| `ProbeDnsName` | `debian.org` | the name the probes look up |
+| `DnsSampling` | `true` | turn the per-minute DNS recording off |
+
+The DNS history is kept in the same SQLite file as the traffic history (`TrafficDatabasePath`), so
+snapshots include it. It's small (one row per minute plus one per probe target), and monthly archiving
+only moves traffic rows.
 
 ### Traffic accounting (Traffic page)
 

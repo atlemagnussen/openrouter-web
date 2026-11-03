@@ -314,6 +314,9 @@ public sealed class TrafficStore(IOptions<RouterOptions> options)
         return written;
     }
 
+    /// <summary>An open connection to the history database, for other stores that keep their tables in it (DNS).</summary>
+    public Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken) => OpenAsync(initialize: true, cancellationToken);
+
     private async Task<SqliteConnection> OpenAsync(bool initialize, CancellationToken cancellationToken)
     {
         if (initialize)

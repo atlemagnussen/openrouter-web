@@ -1,0 +1,80 @@
+@model DnsModel
+@{
+    var t = Model.Totals;
+    string Percent(double? share) => share is { } s ? s.ToString(s < 0.01 ? "P2" : s < 0.1 ? "P1" : "P0") : "—";
+    string PerMinute(long count) => t is { Minutes: > 0 } ? (count / (double)t.Minutes).ToString(count / (double)t.Minutes < 10 ? "0.#" : "N0") : "—";
+}
+
+@if (t is null || t.Minutes == 0)
+{
+    <p class="muted">No DNS statistics recorded in this range yet.</p>
+}
+else
+{
+    <div class="tiles">
+        <div class="tile">
+            <span class="tile-value">@PerMinute(t.Queries)</span>
+            <span class="tile-label">queries per minute</span>
+        </div>
+        <div class="tile">
+            <span class="tile-value">@Percent(t.Share(t.ServFail))</span>
+            <span class="tile-label">SERVFAIL (@t.ServFail.ToString("N0"))</span>
+        </div>
+        <div class="tile">
+            <span class="tile-value">@Percent(t.Share(t.NxDomain))</span>
+            <span class="tile-label">NXDOMAIN (no such name)</span>
+        </div>
+        <div class="tile">
+            <span class="tile-value">@Percent(t.CacheHitRatio)</span>
+            <span class="tile-label">answered from cache</span>
+        </div>
+        <div class="tile">
+            <span class="tile-value">@Percent(t.TimeoutShare)</span>
+            <span class="tile-label">upstream timeouts (@t.UpstreamTimeouts.ToString("N0"))</span>
+        </div>
+        <div class="tile">
+            <span class="tile-value">@t.ValidationFailures.ToString("N0")</span>
+            <span class="tile-label">DNSSEC failures</span>
+        </div>
+    </div>
+}
+
+<h2>Probes, last @Model.SelectedRange.Label</h2>
+<p class="muted small">
+    Every minute the router looks up <span class="mono">@Model.ProbeName</span> through each address clients use (bind),
+    and straight at each forwarder, skipping bind. Slow bind with fast forwarders points at bind itself; both slow points upstream.
+</p>
+@if (Model.Probes.Count == 0)
+{
+    <p class="muted">No probes recorded in this range yet.</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Server</th>
+                    <th>Kind</th>
+                    <th class="num">Average</th>
+                    <th class="num">Slowest</th>
+                    <th class="num">Failed</th>
+                    <th>Last failure</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var probe in Model.Probes)
+                {
+                    <tr>
+                        <td class="mono">@probe.Target</td>
+                        <td>@(probe.Kind == "bind" ? "bind (this router)" : "forwarder")</td>
+                        <td class="num">@(probe.AverageMs is { } avg ? $"{avg:0.#} ms" : "—")</td>
+                        <td class="num">@(probe.MaxMs is { } max ? $"{max:0} ms" : "—")</td>
+                        <td class="num @(probe.Failures > 0 ? "warn" : "")">@probe.Failures of @probe.Count</td>
+                        <td class="muted small">@(probe.LastFailure ?? "")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

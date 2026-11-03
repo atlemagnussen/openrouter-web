@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using OpenRouter.Web.Configuration;
+using OpenRouter.Web.Dns;
 using OpenRouter.Web.Firewall;
 using OpenRouter.Web.Health;
 using OpenRouter.Web.Kea;
@@ -19,6 +20,8 @@ public sealed class HealthModel(
     SystemdService systemd,
     FirewallService firewall,
     ProbeService probes,
+    BindService bind,
+    DnsStore dnsStore,
     IOptions<RouterOptions> options,
     TimeProvider time,
     ILogger<HealthModel> logger) : RouterPageModel(logger)
@@ -43,8 +46,13 @@ public sealed class HealthModel(
         var kernelSnapshot = TryLoadAsync("kernel counters", () => kernel.GetSnapshotAsync(cancellationToken));
         var units = TryLoadAsync("service status", () => systemd.GetUnitsAsync(options.Value.Services, cancellationToken));
         var ruleset = TryLoadAsync("nftables.conf", () => firewall.GetConfigTextAsync(cancellationToken));
+        var bindOptions = TryLoadAsync("named.conf.options", () => bind.GetOptionsAsync(cancellationToken));
+        // The statistics channel is optional; DnsHealth reports it missing, so don't list it as an error too.
+        var bindStats = TryOptionalAsync(() => bind.GetStatsAsync(cancellationToken));
+        var hourEnd = time.GetUtcNow().ToUnixTimeSeconds();
+        var dnsHour = TryLoadAsync("the DNS history", () => dnsStore.GetTotalsAsync(hourEnd - 3600, hourEnd, cancellationToken));
         await Task.WhenAll(keaConfig, leases, statistics, radvdConfig, neighbours, interfaces, links, routes4, routes6,
-            kernelSnapshot, units, ruleset);
+            kernelSnapshot, units, ruleset, bindOptions, bindStats, dnsHour);
 
         // These need to know which interfaces, gateway and DNS servers the router uses.
         var ports = HealthReport.Ports(routes4.Result, keaConfig.Result, radvdConfig.Result);
@@ -58,7 +66,19 @@ public sealed class HealthModel(
         Areas = HealthReport.Build(new HealthInput(
             keaConfig.Result, leases.Result, statistics.Result, radvdConfig.Result, neighbours.Result, interfaces.Result,
             links.Result, nics.Result, routes4.Result, routes6.Result, kernelSnapshot.Result, units.Result, ruleset.Result,
-            probeResults.Result, CheckedAt));
+            probeResults.Result, CheckedAt, bindOptions.Result, bindStats.Result, dnsHour.Result));
+    }
+
+    private static async Task<T?> TryOptionalAsync<T>(Func<Task<T>> load) where T : class
+    {
+        try
+        {
+            return await load();
+        }
+        catch (Exception ex) when (ex is IOException or FormatException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task<ProbeResults?> RunProbesAsync(

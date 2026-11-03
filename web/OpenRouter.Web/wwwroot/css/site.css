@@ -20,6 +20,13 @@
     --series-6: #008300;
     --series-7: #6250d6;
     --series-other: #9a9893;
+    /* Ordinal ramp for response-time bands, fast (light) to slow (dark); validated. */
+    --rtt-1: #86b6ef;
+    --rtt-2: #5598e7;
+    --rtt-3: #2a78d6;
+    --rtt-4: #1c5cab;
+    --rtt-5: #104281;
+    --series-bad: #b91c1c;
     color-scheme: light dark;
 }
 
@@ -45,6 +52,13 @@
         --series-6: #008300;
         --series-7: #9085e9;
         --series-other: #6f6e69;
+        /* On dark, slow is the brightest. */
+        --rtt-1: #184f95;
+        --rtt-2: #3987e5;
+        --rtt-3: #6da7ec;
+        --rtt-4: #9ec5f4;
+        --rtt-5: #cde2fb;
+        --series-bad: #e66767;
     }
 }
 

@@ -11,10 +11,12 @@ export default defineConfig(({ mode }) => ({
         rolldownOptions: {
             input: {
                 traffic: "src/traffic.ts",
+                dns: "src/dns.ts",
             },
             output: {
                 entryFileNames: "[name].js",
-                chunkFileNames: "[name].js",
+                // Code shared by several pages (uPlot, chart helpers).
+                chunkFileNames: "chunk-[name].js",
                 assetFileNames: "[name][extname]",
             },
         },

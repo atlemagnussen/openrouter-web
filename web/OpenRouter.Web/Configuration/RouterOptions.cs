@@ -25,6 +25,17 @@ public sealed class RouterOptions
     [Required]
     public string NftablesConfigPath { get; set; } = "/etc/nftables.conf";
 
+    /// <summary>bind's options file: forwarders, listen addresses, DNSSEC.</summary>
+    [Required]
+    public string BindOptionsPath { get; set; } = "/etc/bind/named.conf.options";
+
+    /// <summary>bind's statistics channel (<c>statistics-channels</c> in named.conf, see README).</summary>
+    [Required]
+    public string BindStatsUrl { get; set; } = "http://127.0.0.1:8053/json/v1";
+
+    /// <summary>Record DNS statistics and probe bind and its forwarders every minute.</summary>
+    public bool DnsSampling { get; set; } = true;
+
     /// <summary>systemd units the Health page checks. Units that aren't installed are reported as such.</summary>
     public string[] Services { get; set; } = [];
 
@@ -91,6 +102,7 @@ public sealed class RouterOptions
         KeaControlSocket = Path.GetFullPath(KeaControlSocket, contentRoot);
         RadvdConfigPath = Path.GetFullPath(RadvdConfigPath, contentRoot);
         NftablesConfigPath = Path.GetFullPath(NftablesConfigPath, contentRoot);
+        BindOptionsPath = Path.GetFullPath(BindOptionsPath, contentRoot);
         TrafficDatabasePath = Path.GetFullPath(TrafficDatabasePath, contentRoot);
         TrafficArchiveDir = Path.GetFullPath(TrafficArchiveDir, contentRoot);
         if (SampleDir is not null)

@@ -1,4 +1,5 @@
 using OpenRouter.Web.Configuration;
+using OpenRouter.Web.Dns;
 using OpenRouter.Web.Firewall;
 using OpenRouter.Web.Kea;
 using OpenRouter.Web.Kernel;
@@ -31,6 +32,9 @@ builder.Services.AddSingleton<TrafficStore>();
 builder.Services.AddSingleton<TrafficStatus>();
 builder.Services.AddSingleton<TrafficEvents>();
 builder.Services.AddHostedService<TrafficSampler>();
+builder.Services.AddSingleton<BindService>();
+builder.Services.AddSingleton<DnsStore>();
+builder.Services.AddHostedService<DnsSampler>();
 
 builder.Services.AddRazorPages();
 
@@ -47,8 +51,9 @@ app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
 
-// Server-Sent Events for the Traffic page: "ready" on connecting, "live" every few seconds, "minute" when a minute is stored.
-app.MapGet("/traffic/events", (TrafficEvents events, IHostApplicationLifetime lifetime, HttpContext context) =>
+// Server-Sent Events for the Traffic and DNS pages: "ready" on connecting, "live" traffic every few seconds,
+// "minute" when a minute of traffic is stored, "dns" when a minute of DNS statistics is.
+app.MapGet("/events", (TrafficEvents events, IHostApplicationLifetime lifetime, HttpContext context) =>
 {
     // End the stream when the page closes or the app shuts down, so shutdown doesn't wait for open pages.
     var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, lifetime.ApplicationStopping);

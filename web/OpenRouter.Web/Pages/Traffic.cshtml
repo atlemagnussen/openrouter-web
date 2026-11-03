@@ -39,7 +39,7 @@ else if (status.LastAddressCount == 0)
     </p>
 }
 
-<section class="card live" id="traffic-live" data-live-url="@Url.Page("/Traffic", "Live")" data-events-url="/traffic/events"
+<section class="card live" id="traffic-live" data-live-url="@Url.Page("/Traffic", "Live")" data-events-url="@Url.Content("~/events")"
          hidden="@(Model.Options.TrafficLiveSeconds == 0)">
     <h2>Live <span class="live-state muted small" data-live-state>connecting…</span></h2>
     <p class="muted small">Internet traffic over the last @((int)TrafficEvents.LiveWindow.TotalMinutes) minutes, updated every @Model.Options.TrafficLiveSeconds s.</p>

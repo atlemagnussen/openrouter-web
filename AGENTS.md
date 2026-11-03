@@ -21,7 +21,7 @@ with systemd `.link` files and configured with ifupdown (`/etc/network/interface
 | IPv6 addressing | radvd (SLAAC + RDNSS, no DHCPv6 server) | `/etc/radvd.conf` |
 | WAN DHCP + IPv6 prefix delegation | dhcpcd (assigns a /64 from the ISP's delegated prefix to the LAN) | `ip -j addr`, dhcpcd state |
 | Who is online | Kernel neighbour table | `ip -j neigh` (IPv4 + IPv6, no root needed) |
-| DNS | bind9, local zones + forwarders | not managed yet |
+| DNS | bind9, local zones + forwarders | `/etc/bind/named.conf.options` (forwarders, listen addresses); statistics channel `http://127.0.0.1:8053/json/v1`; probes are plain DNS lookups |
 | Firewall / NAT | nftables, `/etc/nftables.conf` | text check on the Health page; table `inet acct` counts bytes per LAN address for the Traffic page (README) |
 
 Facts that shape the code:
@@ -74,13 +74,18 @@ Facts that shape the code:
   assembles them. New automatic checks go here, with tests in `HealthCheckTests`.
 - `Traffic/`: per-client traffic history. `TrafficSampler` (a hosted service) reads `nft -j list table
   inet acct` (`NftService`, via sudo) and interface byte counters every `TrafficLiveSeconds` (5 s),
-  publishes live rates and adds the increases up into whole minutes; `TrafficEvents` pushes `live` and
-  `minute` updates to open pages over Server-Sent Events (`/traffic/events`, a minimal endpoint in
+  publishes live rates and adds the increases up into whole minutes; `TrafficEvents` pushes `live`,
+  `minute` and `dns` updates to open pages over Server-Sent Events (`/events`, a minimal endpoint in
   `Program.cs`), and the page script reloads charts and the devices table (a partial) on `minute`; `TrafficAttribution`
   turns counter increases into per-device bytes (by MAC, through `ClientDirectory`); `TrafficStore`
   keeps them in SQLite (one row per device per minute, monthly archive files, `VACUUM INTO` snapshots);
   `TrafficSeriesBuilder` makes chart series. In Development, `SampleTrafficSeeder` fills an empty
   database with made-up traffic instead of sampling.
+- `Dns/`: bind. `BindConfigParser` (named.conf syntax), `BindStatsParser` (statistics channel JSON) and
+  `DnsMetrics` (the counters kept, with restart-aware deltas) are pure; `BindService` does the I/O.
+  `DnsSampler` stores bind's counters and probe lookups (through bind, and straight at each forwarder)
+  every minute in `DnsStore` (tables in the traffic SQLite file) and sends a `dns` event. The DNS
+  checks shared by the DNS and Health pages are in `Health/DnsHealth`.
 - `Clients/`: `ClientDirectory` merges the neighbour table with Kea reservations and leases by MAC.
 - `Pages/`: Razor Pages. Page models derive from `RouterPageModel` and load data through
   `TryLoadAsync`, so an unreadable source shows as a message on the page instead of an error page.

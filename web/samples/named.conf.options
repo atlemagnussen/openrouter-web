@@ -1,0 +1,32 @@
+// Made-up bind options in the shape of the router's (see README in this folder).
+acl "trusted" {
+        localhost;
+        192.168.1.0/24;   # main LAN
+        192.168.2.0/24;   # guest
+        fd00:1234:5678:9abc::/64;
+};
+
+options {
+        directory "/var/cache/bind";
+
+        recursion yes;
+        allow-recursion { trusted; };
+        listen-on { 192.168.1.1; };
+        listen-on { 192.168.2.1; };
+        listen-on-v6 { fd00:1234:5678:9abc::1; };
+        allow-transfer { none; };
+
+        forwarders {
+                8.8.8.8;
+                1.1.1.1;
+                2001:4860:4860::8888;
+        };
+
+        /* Validate signatures from the forwarders too. */
+        dnssec-validation auto;
+        auth-nxdomain no;
+};
+
+statistics-channels {
+        inet 127.0.0.1 port 8053 allow { 127.0.0.1; };
+};

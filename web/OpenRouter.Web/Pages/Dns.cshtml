@@ -1,0 +1,102 @@
+@page
+@using OpenRouter.Web.Health
+@using OpenRouter.Web.Traffic
+@model DnsModel
+@{
+    ViewData["Title"] = "DNS";
+}
+
+<h1>DNS</h1>
+<p class="muted">
+    bind on this router: what clients ask, how it answers, and how fast its upstream is.
+    Recorded every minute from bind's statistics channel and from lookups the router makes itself.
+</p>
+
+<partial name="_Errors" model="Model.Errors" />
+
+@if (Model.IsSampleData)
+{
+    <p class="alert">Development: showing made-up DNS statistics.</p>
+}
+
+<div class="toolbar">
+    <nav class="segmented" aria-label="Time range">
+        @foreach (var range in TrafficRange.All)
+        {
+            <a asp-page="/Dns" asp-route-range="@range.Key" class="@(range == Model.SelectedRange ? "active" : "")"
+               aria-current="@(range == Model.SelectedRange ? "true" : null)">@range.Key</a>
+        }
+    </nav>
+</div>
+
+<div id="dns" data-series-url="@Url.Page("/Dns", "Series", new { range = Model.SelectedRange.Key })"
+     data-summary-url="@Url.Page("/Dns", "Summary", new { range = Model.SelectedRange.Key })"
+     data-events-url="@Url.Content("~/events")">
+    <div data-dns-summary>
+        <partial name="_DnsSummary" model="Model" />
+    </div>
+
+    <section class="card">
+        <h2>Answers to clients</h2>
+        <p class="muted small">Queries per minute by answer, stacked. SERVFAIL is what makes apps hang; a steady share of NXDOMAIN is normal.</p>
+        <div class="chart" data-chart="outcomes" role="img" aria-label="DNS answers per minute over the last @Model.SelectedRange.Label"></div>
+    </section>
+    <section class="card">
+        <h2>Upstream response times</h2>
+        <p class="muted small">Answers bind got from its forwarders per minute, by how long they took, plus queries that timed out.</p>
+        <div class="chart" data-chart="upstream" role="img" aria-label="Upstream DNS response times over the last @Model.SelectedRange.Label"></div>
+    </section>
+    <section class="card">
+        <h2>Probe times</h2>
+        <p class="muted small">Milliseconds per lookup. Gaps are lookups that got no answer.</p>
+        <div class="chart" data-chart="probes" role="img" aria-label="DNS probe times over the last @Model.SelectedRange.Label"></div>
+    </section>
+    <p class="muted small" data-chart-error hidden></p>
+</div>
+
+<section class="card">
+    <h2>Setup</h2>
+    @if (Model.Bind is { } bindOptions)
+    {
+        <dl class="facts">
+            <dt>Listens on</dt>
+            <dd class="mono">@string.Join(", ", bindOptions.ListenOn.Concat(bindOptions.ListenOnV6).DefaultIfEmpty("all addresses"))</dd>
+            <dt>Recursion for</dt>
+            <dd class="mono">@string.Join(", ", bindOptions.AllowRecursion.DefaultIfEmpty("localhost and local networks (default)"))</dd>
+            <dt>Forwarders</dt>
+            <dd class="mono">@string.Join(", ", bindOptions.Forwarders.DefaultIfEmpty("none: resolves from the root servers"))</dd>
+            <dt>DNSSEC</dt>
+            <dd>@(bindOptions.DnssecValidation ?? "auto (default)")</dd>
+        </dl>
+    }
+    <ul class="checks">
+        @foreach (var check in Model.Checks)
+        {
+            <li>
+                <span class="health health-@check.Status.ToString().ToLowerInvariant()"></span>
+                <div>
+                    <strong>@check.Title</strong>
+                    <div>@check.Summary</div>
+                    @if (check.Details is { Count: > 0 })
+                    {
+                        <ul class="small">
+                            @foreach (var detail in check.Details)
+                            {
+                                <li>@detail</li>
+                            }
+                        </ul>
+                    }
+                    @if (check.Advice is not null && check.Status != HealthStatus.Ok)
+                    {
+                        <p class="muted small">@check.Advice</p>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+</section>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/dist/traffic.css" asp-append-version="true" />
+    <script type="module" src="~/dist/dns.js" asp-append-version="true"></script>
+}

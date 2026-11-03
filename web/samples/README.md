@@ -12,3 +12,6 @@ Development stops the app's clock at that moment (`Router:SampleNow`), so the sa
 `proc/`, `sys/`, `ip-*.json`, `kea-statistics.json`, `systemctl-show.txt` and `nftables.conf` feed the Health page
 (`Router:SampleDir`). They include a few deliberate faults (a 100 Mbit guest port that flaps, a named that restarted,
 radvd's short intervals) so every kind of check shows up.
+
+`named.conf.options` and `bind-stats.json` (bind's statistics channel output) feed the DNS page; the DNS history
+itself is made up at startup in Development.

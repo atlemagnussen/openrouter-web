@@ -5,8 +5,9 @@ using System.Threading.Channels;
 namespace OpenRouter.Web.Traffic;
 
 /// <summary>
-/// Pushes traffic updates to open Traffic pages over Server-Sent Events: <c>ready</c> on connecting,
-/// <c>live</c> every few seconds and <c>minute</c> when a minute has been written to the database. Keeps the last few minutes of live
+/// Pushes updates to open pages over Server-Sent Events (<c>/events</c>): <c>ready</c> on connecting,
+/// <c>live</c> traffic every few seconds, <c>minute</c> when a minute of traffic has been written and
+/// <c>dns</c> when a minute of DNS statistics has. Keeps the last few minutes of live
 /// points so a page that opens has something to draw straight away.
 /// </summary>
 public sealed class TrafficEvents
@@ -41,6 +42,10 @@ public sealed class TrafficEvents
     /// <param name="minute">Start of the minute just written, Unix seconds.</param>
     public void PublishMinute(long minute) =>
         Broadcast(new SseItem<string>(JsonSerializer.Serialize(new { minute }, JsonSerializerOptions.Web), "minute"));
+
+    /// <param name="minute">Start of the minute of DNS statistics just written, Unix seconds.</param>
+    public void PublishDnsMinute(long minute) =>
+        Broadcast(new SseItem<string>(JsonSerializer.Serialize(new { minute }, JsonSerializerOptions.Web), "dns"));
 
     /// <summary>Events from now on, until <paramref name="cancellationToken"/> fires (the page closes or the app stops).</summary>
     public async IAsyncEnumerable<SseItem<string>> SubscribeAsync(
