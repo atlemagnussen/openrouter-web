@@ -4,8 +4,12 @@ A web interface for a self-built Linux router, in the spirit of a consumer route
 It starts read-only (show clients, leases, DHCP and IPv6 config) and will grow editing,
 authentication and background tasks.
 
-Everything lives in `web/`: the app (.NET 10, ASP.NET Core Razor Pages), its tests, the TypeScript
-client, made-up sample data, and the deploy scripts (`publish.sh`, `run.sh`, `openrouter-web.service`).
+- `web/`: the router app (.NET 10, ASP.NET Core Razor Pages), its tests, the TypeScript chart client
+  (`web/client/`), made-up sample data, and the deploy scripts (`publish.sh`, `run.sh`, `openrouter-web.service`).
+- `client/`: `netcheck`, a .NET 10 console tool for laptops that measures the connection from the device
+  side (ping, DNS, HTTPS timing, Wi-Fi via `iw`) into its own SQLite file, to compare with the router's
+  history. Separate solution (`client/OpenRouter.Client.slnx`); see `client/README.md`. It shares
+  `DnsMessage.cs` with the web app by linking the file, not by a project reference.
 
 **This repository is public.** Never commit real router data: config files, leases, MAC addresses,
 hostnames, IPv6 prefixes or public IPs. Use the made-up data in `web/samples/`.
