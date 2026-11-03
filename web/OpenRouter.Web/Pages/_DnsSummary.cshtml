@@ -41,8 +41,8 @@ else
 
 <h2>Probes, last @Model.SelectedRange.Label</h2>
 <p class="muted small">
-    Every minute the router looks up <span class="mono">@Model.ProbeName</span> through each address clients use (bind),
-    and straight at each forwarder, skipping bind. Slow bind with fast forwarders points at bind itself; both slow points upstream.
+    Every minute the router looks up <span class="mono">@Model.ProbeName</span> through each DNS address clients are given
+    (bind on this router, or another server), and straight at each forwarder, skipping bind. Slow bind with fast forwarders points at bind itself; both slow points upstream.
 </p>
 @if (Model.Probes.Count == 0)
 {
@@ -67,7 +67,7 @@ else
                 {
                     <tr>
                         <td class="mono">@probe.Target</td>
-                        <td>@(probe.Kind == "bind" ? "bind (this router)" : "forwarder")</td>
+                        <td>@(probe.Kind switch { "bind" => "bind (this router)", "other" => "other DNS server", _ => "forwarder" })</td>
                         <td class="num">@(probe.AverageMs is { } avg ? $"{avg:0.#} ms" : "—")</td>
                         <td class="num">@(probe.MaxMs is { } max ? $"{max:0} ms" : "—")</td>
                         <td class="num @(probe.Failures > 0 ? "warn" : "")">@probe.Failures of @probe.Count</td>

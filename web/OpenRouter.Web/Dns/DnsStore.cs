@@ -4,7 +4,7 @@ using OpenRouter.Web.Traffic;
 namespace OpenRouter.Web.Dns;
 
 /// <summary>One probe: a lookup of the probe name through bind or straight at one of its forwarders.</summary>
-/// <param name="Kind"><c>bind</c> (an address clients use) or <c>forwarder</c>.</param>
+/// <param name="Kind"><c>bind</c> (this router, as clients use it), <c>other</c> (another DNS server clients are given) or <c>forwarder</c>.</param>
 /// <param name="Milliseconds">Null when no answer came back.</param>
 public sealed record DnsProbeResult(string Target, string Kind, double? Milliseconds, int? ResponseCode, string? Error);
 
@@ -38,7 +38,7 @@ public sealed class DnsStore(TrafficStore database)
         CREATE TABLE IF NOT EXISTS dns_probes (
             minute INTEGER NOT NULL,
             target TEXT NOT NULL,          -- server address
-            kind TEXT NOT NULL,            -- 'bind' or 'forwarder'
+            kind TEXT NOT NULL,            -- 'bind', 'other' or 'forwarder'
             ms REAL,                       -- null: no answer
             rcode INTEGER,
             error TEXT,
@@ -172,7 +172,7 @@ public sealed class DnsStore(TrafficStore database)
             Outcomes: [new("NOERROR", sums[0]), new("NXDOMAIN", sums[1]), new("Other", sums[2]), new("SERVFAIL", sums[3])],
             Upstream: upstreamBands.Select((band, i) => new DnsCountSeries(band, sums[4 + i])).ToList(),
             Probes: probes
-                .OrderBy(p => p.Value.Kind == "bind" ? 0 : 1)
+                .OrderBy(p => p.Value.Kind switch { "bind" => 0, "other" => 1, _ => 2 })
                 .Select(p => new DnsProbeSeries(p.Key, p.Value.Kind, p.Value.Ms))
                 .ToList());
     }
@@ -209,7 +209,7 @@ public sealed class DnsStore(TrafficStore database)
                     WHERE p2.target = p.target AND p2.minute >= $from AND p2.minute < $to AND (p2.ms IS NULL OR coalesce(p2.rcode, 0) <> 0)
                     ORDER BY p2.minute DESC LIMIT 1)
             FROM dns_probes p WHERE minute >= $from AND minute < $to
-            GROUP BY target ORDER BY kind, target;
+            GROUP BY target ORDER BY CASE kind WHEN 'bind' THEN 0 WHEN 'other' THEN 1 ELSE 2 END, target;
             """;
         command.Parameters.AddWithValue("$from", from);
         command.Parameters.AddWithValue("$to", to);

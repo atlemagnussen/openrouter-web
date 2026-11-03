@@ -3,6 +3,7 @@ using OpenRouter.Web.Configuration;
 using OpenRouter.Web.Dns;
 using OpenRouter.Web.Health;
 using OpenRouter.Web.Kea;
+using OpenRouter.Web.Network;
 using OpenRouter.Web.Radvd;
 using OpenRouter.Web.Traffic;
 using static OpenRouter.Web.Health.HealthStatus;
@@ -96,7 +97,8 @@ public class DnsTests
         var targets = DnsProbeTargets.From(
             KeaConfigParser.Parse(Samples.Read("kea-dhcp4.conf")),
             RadvdParser.Parse(Samples.Read("radvd.conf")),
-            BindConfigParser.ParseOptions("options { forwarders { 8.8.8.8; 192.168.1.1; 2001:4860:4860:0:0:0:0:8888; 9.9.9.9 port 853; bogus; }; };"));
+            BindConfigParser.ParseOptions("options { forwarders { 8.8.8.8; 192.168.1.1; 2001:4860:4860:0:0:0:0:8888; 9.9.9.9 port 853; bogus; }; };"),
+            Interfaces);
 
         Assert.Equal(
         [
@@ -112,18 +114,37 @@ public class DnsTests
         var radvd = RadvdParser.Parse(Samples.Read("radvd.conf"));
         var bind = BindConfigParser.ParseOptions("options { listen-on { 192.168.1.1; }; listen-on-v6 { fd00:1234:5678:9abc:0:0:0:1; }; };");
 
-        var check = DnsHealth.Check(bind, null, null, kea, radvd, Now).Single(c => c.Title == "Listening where clients look");
+        var check = DnsHealth.Check(bind, null, null, kea, radvd, Interfaces, Now).Single(c => c.Title == "Listening where clients look");
 
         Assert.Equal(Problem, check.Status);
-        Assert.Equal(["DHCP gives out 192.168.2.1, but listen-on doesn't include it."], check.Details);  // the v6 one matches despite the zeros
+        Assert.Equal(["DHCP on LAN-GUEST gives out 192.168.2.1, but listen-on doesn't include it."], check.Details);  // the v6 one matches despite the zeros
     }
+
+    [Fact]
+    public void Dns_server_elsewhere_on_the_network_is_noted_not_flagged()
+    {
+        // The guest network uses a DNS server on the LAN instead of the router.
+        var sample = KeaConfigParser.Parse(Samples.Read("kea-dhcp4.conf"));
+        var guest = sample.Subnets[1] with { Options = [new("routers", "192.168.2.1"), new("domain-name-servers", "192.168.1.2")] };
+        var kea = sample with { Subnets = [sample.Subnets[0], guest] };
+        var bind = BindConfigParser.ParseOptions("options { listen-on { 192.168.1.1; }; };");
+
+        var check = DnsHealth.Check(bind, null, null, kea, null, Interfaces, Now).Single(c => c.Title == "Listening where clients look");
+        Assert.Equal(Ok, check.Status);
+        Assert.Contains(check.Details!, d => d.StartsWith("192.168.1.2 (LAN-GUEST) is another server"));
+
+        var targets = DnsProbeTargets.From(kea, null, bind, Interfaces);
+        Assert.Equal([new("192.168.1.1", "bind"), new("192.168.1.2", "other")], targets);
+    }
+
+    private static IReadOnlyList<NetInterface> Interfaces => IpJsonParser.ParseInterfaces(Samples.Read("ip-addr.json"));
 
     [Fact]
     public void Missing_statistics_channel_and_failure_rates()
     {
         var bind = BindOptions.Empty;
         var totals = new DnsTotals(60, 10_000, 9_000, 400, 600, 0, 0, 1_000, 30, 0, 0);
-        var checks = DnsHealth.Check(bind, null, totals, null, null, Now).ToList();
+        var checks = DnsHealth.Check(bind, null, totals, null, null, Interfaces, Now).ToList();
 
         Assert.Equal(Info, checks.Single(c => c.Title == "Statistics channel").Status);
         Assert.Equal(Warning, checks.Single(c => c.Title == "SERVFAIL answers").Status);   // 6%

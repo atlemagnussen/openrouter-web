@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using OpenRouter.Web.Configuration;
 using OpenRouter.Web.Health;
 using OpenRouter.Web.Kea;
+using OpenRouter.Web.Network;
 using OpenRouter.Web.Probes;
 using OpenRouter.Web.Radvd;
 using OpenRouter.Web.Traffic;
@@ -19,6 +20,7 @@ public sealed class DnsSampler(
     BindService bind,
     KeaService kea,
     RadvdService radvd,
+    IpCommand ip,
     ProbeService probes,
     TrafficEvents events,
     TimeProvider time,
@@ -77,7 +79,8 @@ public sealed class DnsSampler(
         var config = await TryAsync(errors, "Kea config", () => kea.GetConfigAsync(cancellationToken), cancellationToken);
         var radvdConfig = await TryAsync(errors, "radvd.conf", () => radvd.GetConfigAsync(cancellationToken), cancellationToken);
         var bindOptions = await TryAsync(errors, "named.conf.options", () => bind.GetOptionsAsync(cancellationToken), cancellationToken);
-        var results = await Task.WhenAll(DnsProbeTargets.From(config, radvdConfig, bindOptions)
+        var interfaces = await TryAsync(errors, "interface addresses", () => ip.GetInterfacesAsync(cancellationToken), cancellationToken);
+        var results = await Task.WhenAll(DnsProbeTargets.From(config, radvdConfig, bindOptions, interfaces)
             .Select(async t => ToResult(t, await probes.QueryAsync(t.Address, options.Value.ProbeDnsName, cancellationToken))));
 
         if (delta is not null || results.Length > 0)
@@ -115,14 +118,25 @@ public sealed class DnsSampler(
     }
 }
 
-/// <summary>Where the DNS probes go: every address clients are told to use, then each of bind's forwarders.</summary>
+/// <summary>
+/// Where the DNS probes go: every address clients are told to use (<c>bind</c> when it's this router,
+/// <c>other</c> when it's another DNS server on the network), then each of bind's forwarders.
+/// </summary>
 public static class DnsProbeTargets
 {
     public sealed record Target(string Address, string Kind);
 
-    public static IReadOnlyList<Target> From(KeaConfig? kea, RadvdConfig? radvd, BindOptions? bind)
+    public static IReadOnlyList<Target> From(KeaConfig? kea, RadvdConfig? radvd, BindOptions? bind, IReadOnlyList<NetInterface>? interfaces)
     {
-        var targets = HealthReport.DnsServers(kea, radvd).Select(a => new Target(a, "bind")).ToList();
+        var routerAddresses = (interfaces ?? []).SelectMany(i => i.Addresses)
+            .Select(a => System.Net.IPAddress.TryParse(a.Address, out var ip) ? ip : null)
+            .OfType<System.Net.IPAddress>()
+            .ToHashSet();
+        // Without the router's addresses, assume what clients are given is bind (the usual setup).
+        bool OnRouter(string address) =>
+            interfaces is null || (System.Net.IPAddress.TryParse(address, out var ip) && routerAddresses.Contains(ip));
+
+        var targets = HealthReport.DnsServers(kea, radvd).Select(a => new Target(a, OnRouter(a) ? "bind" : "other")).ToList();
         foreach (var forwarder in bind?.Forwarders ?? [])
         {
             // Entries can carry a port ("1.1.1.1 port 53"); only plain addresses are probed.

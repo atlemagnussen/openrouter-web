@@ -24,6 +24,8 @@ builder.Services.AddSingleton<KeaService>();
 builder.Services.AddSingleton<RadvdService>();
 builder.Services.AddSingleton<IpCommand>();
 builder.Services.AddSingleton<KernelReader>();
+builder.Services.AddSingleton<LinkStore>();
+builder.Services.AddHostedService<LinkMonitor>();
 builder.Services.AddSingleton<SystemdService>();
 builder.Services.AddSingleton<FirewallService>();
 builder.Services.AddSingleton<ProbeService>();

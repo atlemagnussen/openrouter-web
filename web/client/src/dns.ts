@@ -20,7 +20,7 @@ interface CountSeries {
 
 interface ProbeSeries {
     target: string;
-    kind: "bind" | "forwarder";
+    kind: "bind" | "other" | "forwarder";
     milliseconds: Column;
 }
 
@@ -122,7 +122,7 @@ class DnsView {
             series: [
                 { label: "Time", value: timeValue },
                 ...probes.map((p, i): uPlot.Series => ({
-                    label: p.kind === "bind" ? `bind ${p.target}` : p.target,
+                    label: p.kind === "bind" ? `bind ${p.target}` : p.kind === "other" ? `DNS ${p.target}` : p.target,
                     stroke: theme.series[i % theme.series.length],
                     width: 2,
                     value: (_u, v) => (v == null ? "–" : `${v.toFixed(1)} ms`),

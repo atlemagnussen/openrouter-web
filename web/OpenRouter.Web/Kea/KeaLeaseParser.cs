@@ -48,6 +48,21 @@ public static class KeaLeaseParser
         return byAddress.Values.ToList();
     }
 
+    /// <summary>
+    /// Parses several memfiles in the order Kea reads them (oldest first): a later row for an address replaces
+    /// an earlier one, across files too. Empty files are skipped.
+    /// </summary>
+    public static IReadOnlyList<KeaLease> ParseCsvFiles(IEnumerable<string> files)
+    {
+        var byAddress = new Dictionary<string, KeaLease>();
+        foreach (var csv in files.Where(f => !string.IsNullOrWhiteSpace(f)))
+        {
+            foreach (var lease in ParseCsv(csv))
+                byAddress[lease.IpAddress] = lease;
+        }
+        return byAddress.Values.ToList();
+    }
+
     /// <summary>Parses the response to <c>lease4-get-all</c> from Kea's control socket.</summary>
     public static IReadOnlyList<KeaLease> ParseCommandResponse(string json)
     {

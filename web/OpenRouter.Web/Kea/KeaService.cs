@@ -47,6 +47,28 @@ public sealed class KeaService(
                 logger.LogWarning(ex, "Kea control socket failed; reading the lease file instead");
             }
         }
-        return KeaLeaseParser.ParseCsv(await File.ReadAllTextAsync(options.Value.KeaLeasesPath, cancellationToken));
+        return KeaLeaseParser.ParseCsvFiles(await ReadLeaseFilesAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// The memfile and the files Kea's lease file cleanup (LFC) leaves next to it, oldest first, the way Kea
+    /// reads them at startup: <c>.completed</c> (or <c>.1</c> while a cleanup is running), <c>.2</c>, then the
+    /// file itself. After a cleanup, leases that haven't changed since are only in the older files.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ReadLeaseFilesAsync(CancellationToken cancellationToken)
+    {
+        var path = options.Value.KeaLeasesPath;
+        var completed = path + ".completed";
+        string[] candidates = [File.Exists(completed) ? completed : path + ".1", path + ".2", path];
+
+        var texts = new List<string>();
+        foreach (var file in candidates)
+        {
+            // The main file must exist; the others only do around a cleanup.
+            if (file != path && !File.Exists(file))
+                continue;
+            texts.Add(await File.ReadAllTextAsync(file, cancellationToken));
+        }
+        return texts;
     }
 }

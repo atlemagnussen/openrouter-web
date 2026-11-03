@@ -94,4 +94,25 @@ public class KeaLeaseParserTests
             KeaLeaseParser.ParseCommandResponse("""{ "result": 2, "text": "'lease4-get-all' command not supported." }"""));
         Assert.Contains("not supported", error.Message);
     }
+
+    [Fact]
+    public void Lease_files_from_a_cleanup_are_merged_oldest_first()
+    {
+        // After Kea's lease file cleanup, a lease that hasn't changed is only in the older .2 file.
+        var older = $"""
+            {Header}
+            192.168.1.190,02:00:00:00:00:90,,7200,2000,1,0,0,phone,0,,0
+            192.168.1.50,02:00:00:00:00:01,,600,1000,1,0,0,old-name,0,,0
+            """;
+        var current = $"""
+            {Header}
+            192.168.1.50,02:00:00:00:00:02,,600,3000,1,0,0,new-name,0,,0
+            """;
+
+        var leases = KeaLeaseParser.ParseCsvFiles([older, "", current]);
+
+        Assert.Equal(2, leases.Count);
+        Assert.Equal("phone", leases.Single(l => l.IpAddress == "192.168.1.190").Hostname);
+        Assert.Equal("new-name", leases.Single(l => l.IpAddress == "192.168.1.50").Hostname);
+    }
 }

@@ -22,6 +22,7 @@ public sealed class HealthModel(
     ProbeService probes,
     BindService bind,
     DnsStore dnsStore,
+    LinkStore linkStore,
     IOptions<RouterOptions> options,
     TimeProvider time,
     ILogger<HealthModel> logger) : RouterPageModel(logger)
@@ -57,16 +58,21 @@ public sealed class HealthModel(
         // These need to know which interfaces, gateway and DNS servers the router uses.
         var ports = HealthReport.Ports(routes4.Result, keaConfig.Result, radvdConfig.Result);
         var nics = TryLoadAsync("link details", () => kernel.GetNicsAsync(ports.Select(p => p.Name), cancellationToken));
+        var linkHistory = options.Value.SampleDir is not null
+            ? Task.FromResult<IReadOnlyDictionary<string, LinkHistory>?>(null)
+            : TryLoadAsync("link history", async () =>
+                await linkStore.GetHistoryAsync(await kernel.GetBootIdAsync(cancellationToken),
+                    time.GetUtcNow() - LinkHealth.RecentWindow, cancellationToken));
         var probeResults = options.Value.SampleDir is not null
             ? Task.FromResult<ProbeResults?>(null)
             : RunProbesAsync(routes4.Result, routes6.Result, keaConfig.Result, radvdConfig.Result, cancellationToken);
-        await Task.WhenAll(nics, probeResults);
+        await Task.WhenAll(nics, probeResults, linkHistory);
 
         CheckedAt = time.GetUtcNow();
         Areas = HealthReport.Build(new HealthInput(
             keaConfig.Result, leases.Result, statistics.Result, radvdConfig.Result, neighbours.Result, interfaces.Result,
             links.Result, nics.Result, routes4.Result, routes6.Result, kernelSnapshot.Result, units.Result, ruleset.Result,
-            probeResults.Result, CheckedAt, bindOptions.Result, bindStats.Result, dnsHour.Result));
+            probeResults.Result, CheckedAt, bindOptions.Result, bindStats.Result, dnsHour.Result, linkHistory.Result));
     }
 
     private static async Task<T?> TryOptionalAsync<T>(Func<Task<T>> load) where T : class

@@ -5,6 +5,7 @@ using OpenRouter.Web.Configuration;
 using OpenRouter.Web.Dns;
 using OpenRouter.Web.Health;
 using OpenRouter.Web.Kea;
+using OpenRouter.Web.Network;
 using OpenRouter.Web.Radvd;
 using OpenRouter.Web.Traffic;
 
@@ -15,6 +16,7 @@ public sealed class DnsModel(
     DnsStore store,
     KeaService kea,
     RadvdService radvd,
+    IpCommand ip,
     IOptions<RouterOptions> options,
     TimeProvider time,
     ILogger<DnsModel> logger) : RouterPageModel(logger)
@@ -50,7 +52,8 @@ public sealed class DnsModel(
         var lastHour = await TryLoadAsync("the DNS history", () => store.GetTotalsAsync(nowSeconds - 3600, nowSeconds, cancellationToken));
         var config = await TryLoadAsync("the Kea config", () => kea.GetConfigAsync(cancellationToken));
         var radvdConfig = await TryLoadAsync("radvd.conf", () => radvd.GetConfigAsync(cancellationToken));
-        Checks = DnsHealth.Check(Bind, Stats, lastHour, config, radvdConfig, Now).ToList();
+        var interfaces = await TryLoadAsync("interface addresses", () => ip.GetInterfacesAsync(cancellationToken));
+        Checks = DnsHealth.Check(Bind, Stats, lastHour, config, radvdConfig, interfaces, Now).ToList();
     }
 
     /// <summary>The tiles and probe table on their own, swapped in by the page's script when a new minute is stored.</summary>

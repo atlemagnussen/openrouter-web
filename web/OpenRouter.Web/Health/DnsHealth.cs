@@ -1,5 +1,6 @@
 using OpenRouter.Web.Dns;
 using OpenRouter.Web.Kea;
+using OpenRouter.Web.Network;
 using OpenRouter.Web.Pages;
 using OpenRouter.Web.Radvd;
 using static OpenRouter.Web.Health.HealthStatus;
@@ -9,13 +10,16 @@ namespace OpenRouter.Web.Health;
 /// <summary>bind: does it answer on the addresses clients are given, and how did it do over the last hour.</summary>
 public static class DnsHealth
 {
+    /// <param name="interfaces">The router's addresses, to tell its own bind apart from other DNS servers clients may be given.</param>
     public static IEnumerable<HealthCheck> Check(
-        BindOptions? bind, BindStats? stats, DnsTotals? lastHour, KeaConfig? kea, RadvdConfig? radvd, DateTimeOffset now)
+        BindOptions? bind, BindStats? stats, DnsTotals? lastHour, KeaConfig? kea, RadvdConfig? radvd,
+        IReadOnlyList<NetInterface>? interfaces, DateTimeOffset now)
     {
         if (bind is null)
             yield break;
 
-        yield return ListenAddresses(bind, kea, radvd);
+        if (interfaces is not null)
+            yield return ListenAddresses(bind, kea, radvd, interfaces);
 
         if (stats is not null)
         {
@@ -61,32 +65,54 @@ public static class DnsHealth
         }
     }
 
-    private static HealthCheck ListenAddresses(BindOptions bind, KeaConfig? kea, RadvdConfig? radvd)
+    private static HealthCheck ListenAddresses(
+        BindOptions bind, KeaConfig? kea, RadvdConfig? radvd, IReadOnlyList<NetInterface> interfaces)
     {
         const string title = "Listening where clients look";
+        var routerAddresses = interfaces.SelectMany(i => i.Addresses).Select(a => a.Address).ToList();
+        bool OnRouter(string address) => routerAddresses.Any(a => SameAddress(a, address));
+
+        // Which networks are given which server, for the messages.
+        var given = new List<(string Address, string Network, bool Ipv6)>();
+        foreach (var subnet in kea?.Subnets ?? [])
+        {
+            foreach (var address in (subnet.Option("domain-name-servers") ?? "")
+                         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                given.Add((address, subnet.Name ?? subnet.Subnet, false));
+        }
+        foreach (var config in radvd?.Interfaces ?? [])
+        {
+            foreach (var address in config.Rdnss.SelectMany(r => r.Arguments))
+                given.Add((address, config.Name, true));
+        }
+
         var missing = new List<string>();
-        var ipv4 = (kea?.Subnets ?? [])
-            .SelectMany(s => (s.Option("domain-name-servers") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Distinct();
-        var ipv6 = (radvd?.Interfaces ?? []).SelectMany(i => i.Rdnss).SelectMany(r => r.Arguments).Distinct();
-
-        // No listen-on means all addresses; "any" too.
-        foreach (var address in ipv4)
+        var elsewhere = new List<string>();
+        foreach (var group in given.GroupBy(g => (g.Address, g.Ipv6)))
         {
-            if (bind.ListenOn.Count > 0 && !bind.ListenOn.Contains("any") && !bind.ListenOn.Contains(address))
-                missing.Add($"DHCP gives out {address}, but listen-on doesn't include it.");
-        }
-        foreach (var address in ipv6)
-        {
-            if (bind.ListenOnV6.Count > 0 && !bind.ListenOnV6.Contains("any") && !bind.ListenOnV6.Any(a => SameAddress(a, address)))
-                missing.Add($"Router advertisements give out {address}, but listen-on-v6 doesn't include it.");
+            var (address, ipv6) = group.Key;
+            var networks = string.Join(", ", group.Select(g => g.Network).Distinct());
+            if (!OnRouter(address))
+            {
+                elsewhere.Add($"{address} ({networks}) is another server, not this router; the probes on the DNS page test it.");
+                continue;
+            }
+            // No listen-on means all addresses; "any" too.
+            var listen = ipv6 ? bind.ListenOnV6 : bind.ListenOn;
+            if (listen.Count > 0 && !listen.Contains("any") && !listen.Any(a => SameAddress(a, address)))
+                missing.Add(ipv6
+                    ? $"Router advertisements on {networks} give out {address}, but listen-on-v6 doesn't include it."
+                    : $"DHCP on {networks} gives out {address}, but listen-on doesn't include it.");
         }
 
-        return missing.Count == 0
-            ? new(title, Ok, "bind listens on every DNS address that DHCP and router advertisements give out.")
-            : new(title, Problem, $"{missing.Count} DNS address{(missing.Count == 1 ? "" : "es")} clients are given {(missing.Count == 1 ? "has" : "have")} nothing listening.",
+        if (missing.Count > 0)
+            return new(title, Problem,
+                $"{missing.Count} of the router's DNS addresses that clients are given {(missing.Count == 1 ? "has" : "have")} nothing listening.",
                 "Clients try that server first and wait for it to time out before using another, which feels like every new page loading slowly.",
-                missing);
+                [.. missing, .. elsewhere]);
+        return new(title, Ok,
+            "bind listens on every address of this router that DHCP and router advertisements give out as DNS server.",
+            Details: elsewhere.Count > 0 ? elsewhere : null);
     }
 
     // fda9:9699:0faa::1 and fda9:9699:faa::1 are the same address.

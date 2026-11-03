@@ -51,6 +51,39 @@ public sealed class KernelReader(IOptions<RouterOptions> options)
         return nics;
     }
 
+    /// <summary>Identifies the current boot (/proc/sys/kernel/random/boot_id); changes on every reboot.</summary>
+    public async Task<string> GetBootIdAsync(CancellationToken cancellationToken) =>
+        (await File.ReadAllTextAsync(Path.Combine(options.Value.ProcRoot, "sys/kernel/random/boot_id"), cancellationToken)).Trim();
+
+    /// <summary>Physical network interfaces: those in /sys/class/net backed by a device (not lo, bridges, veth, ...).</summary>
+    public IReadOnlyList<string> GetPhysicalInterfaces()
+    {
+        var root = Path.Combine(options.Value.SysRoot, "class/net");
+        if (!Directory.Exists(root))
+            return [];
+        return Directory.GetDirectories(root)
+            .Where(dir => Directory.Exists(Path.Combine(dir, "device")))
+            .Select(Path.GetFileName)
+            .OfType<string>()
+            .Order()
+            .ToList();
+    }
+
+    /// <summary>How often each interface's link has gone up or down since boot (/sys/class/net/*/carrier_changes).</summary>
+    public async Task<IReadOnlyDictionary<string, long>> GetCarrierChangesAsync(IEnumerable<string> names, CancellationToken cancellationToken)
+    {
+        var changes = new Dictionary<string, long>();
+        foreach (var name in names)
+        {
+            if (name.Length == 0 || name.Contains('/') || name.StartsWith('.'))
+                continue;
+            var text = await ReadOptionalAsync(Path.Combine(options.Value.SysRoot, "class/net", name, "carrier_changes"), cancellationToken, ignoreIoErrors: true);
+            if (long.TryParse(text?.Trim(), out var count))
+                changes[name] = count;
+        }
+        return changes;
+    }
+
     /// <summary>Bytes received and sent by each interface since boot, from /sys/class/net/*/statistics.</summary>
     public async Task<IReadOnlyDictionary<string, (long Rx, long Tx)>> GetInterfaceBytesAsync(
         IEnumerable<string> names, CancellationToken cancellationToken)

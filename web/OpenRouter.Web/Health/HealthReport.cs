@@ -27,7 +27,8 @@ public sealed record HealthInput(
     DateTimeOffset Now,
     BindOptions? Bind = null,
     BindStats? BindStats = null,
-    DnsTotals? DnsLastHour = null);
+    DnsTotals? DnsLastHour = null,
+    IReadOnlyDictionary<string, LinkHistory>? LinkHistory = null);
 
 public static class HealthReport
 {
@@ -42,11 +43,11 @@ public static class HealthReport
             new("Internet", "Tested from the router: routes, ping and the DNS servers clients are given.",
                 ConnectivityHealth.Check(input.Routes4, input.Routes6, input.Probes).ToList()),
             new("Network links", "The router's own ports. Counters are since boot.",
-                LinkHealth.Check(ports, input.Links, input.Nics).ToList()),
+                LinkHealth.Check(ports, input.Links, input.Nics, input.LinkHistory, input.Now).ToList()),
             new("DHCP (IPv4)", "Kea's address pools, conflicts and counters.",
                 DhcpHealth.Check(input.KeaConfig, input.Leases, input.KeaStatistics, input.Neighbours, input.Now).ToList()),
             new("DNS", "bind: where it listens, and how it answered over the last hour. Details on the DNS page.",
-                DnsHealth.Check(input.Bind, input.BindStats, input.DnsLastHour, input.KeaConfig, input.Radvd, input.Now).ToList()),
+                DnsHealth.Check(input.Bind, input.BindStats, input.DnsLastHour, input.KeaConfig, input.Radvd, input.Interfaces, input.Now).ToList()),
             new("IPv6", "radvd's router advertisements, checked against what phones accept.",
                 Ipv6Health.Check(input.Radvd, input.Interfaces, input.Routes6).ToList()),
             new("Router", "Kernel tables, CPU and memory.",

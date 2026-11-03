@@ -76,8 +76,8 @@ Most of what the app reads is world-readable: `/etc/kea/kea-dhcp4.conf`, `/etc/r
 `/etc/nftables.conf`, `/proc`, `/sys`, `ip -j ...` and `systemctl show`.
 
 **Kea's control socket** (leases and statistics). Connecting to a unix socket needs write permission on
-it, and Kea creates it without group write. Put the app's user in Kea's group, and make Kea create the
-socket group-writable:
+it, and Kea 2.6 creates it as `0750`: its group can't connect. Put the app's user in Kea's group, and
+add group write after Kea starts:
 
 ```sh
 sudo usermod -aG _kea openrouter
@@ -87,20 +87,27 @@ sudo systemctl edit kea-dhcp4-server
 ```ini
 [Service]
 UMask=0007
+# Kea creates its control socket as 0750; the _kea group (the openrouter user) needs write to connect.
+ExecStartPost=-/bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do [ -S /run/kea/kea4-ctrl-socket ] && exec chmod g+w /run/kea/kea4-ctrl-socket; sleep 1; done'
 ```
 
 ```sh
 sudo systemctl restart kea-dhcp4-server
-ls -l /run/kea/kea4-ctrl-socket      # srwxrwx--- _kea _kea
+ls -l /run/kea/kea4-ctrl-socket                                   # srwxrwx--- _kea _kea, no "+"
+sudo -u openrouter test -w /run/kea/kea4-ctrl-socket && echo ok
+sudo systemctl restart openrouter-web                             # picks up the new group
 ```
 
-Group membership applies to processes started afterwards, so restart the app (or log in again).
-For a quick test with your own user instead, an ACL lasts until Kea recreates the socket:
-
-```sh
-sudo setfacl -m u:$USER:x /run/kea
-sudo setfacl -m u:$USER:rw /run/kea/kea4-ctrl-socket
-```
+Notes:
+- `UMask` alone isn't enough (Kea sets the mode itself); the `ExecStartPost` line does the work. The `-`
+  keeps Kea starting even if the chmod fails.
+- A `config-reload` may recreate the socket as `0750` until Kea's next restart. The app doesn't send one yet.
+- Don't test with `setfacl` on the socket: the ACL mask makes `ls` show `rwx` for the group when the
+  group really can't write.
+- Without the socket the app falls back to the lease files (it reads `kea-leases4.csv` plus the `.completed`,
+  `.1` and `.2` files Kea's lease cleanup leaves), but Kea's statistics are then missing.
+- To check Kea's config by hand, run the check as Kea's user: `sudo -u _kea kea-dhcp4 -t /etc/kea/kea-dhcp4.conf`.
+  As root it fails with "Unable to open file", because Kea's AppArmor profile blocks root's override of file permissions.
 
 **Ping** (Health page) uses unprivileged ICMP sockets. Debian allows them for everyone; check with
 `sysctl net.ipv4.ping_group_range` (should be `0 2147483647`).
