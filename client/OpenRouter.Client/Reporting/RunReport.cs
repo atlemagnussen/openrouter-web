@@ -160,7 +160,8 @@ public static class RunReport
         if (wifi.Count > 0)
         {
             var weak = wifi.Count(w => w.SignalDbm < -75);
-            if (weak > 0)
+            // A few weak readings in hours are a glitch or a brief dip, not a weak spot.
+            if (weak > 0 && weak >= wifi.Count * 0.02)
                 hints.Add($"The signal was below -75 dBm {Format.Percent(100.0 * weak / wifi.Count)} of the time (weakest {wifi.Min(w => w.SignalDbm)} dBm): " +
                     "too far from the access point, or a wall in the way.");
             var slowBand = wifi.Count(w => w.Band == "2.4 GHz");
