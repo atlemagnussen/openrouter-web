@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpenRouter.Client\OpenRouter.Client.csproj" />
+    <ProjectReference Include="..\OpenRouter.Client.Core\OpenRouter.Client.Core.csproj" />
   </ItemGroup>
 
 </Project>

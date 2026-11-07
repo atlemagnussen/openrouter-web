@@ -1,0 +1,151 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sp="using:ScottPlot.Avalonia"
+        xmlns:local="using:OpenRouter.Client.App"
+        x:Class="OpenRouter.Client.App.MainWindow"
+        x:DataType="local:MainWindow"
+        Title="netcheck" Width="1180" Height="820" MinWidth="720" MinHeight="520"
+        Background="{DynamicResource PageBrush}">
+  <DockPanel>
+
+    <!-- Now: the connection right now, and the range for the charts. -->
+    <Border DockPanel.Dock="Top" Padding="16,10" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource LineBrush}">
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel Orientation="Horizontal">
+          <StackPanel Margin="0,0,28,0">
+            <TextBlock Classes="muted" Text="Wi-Fi" />
+            <TextBlock Classes="value" x:Name="WifiText" Text="—" />
+            <TextBlock Classes="muted" x:Name="WifiDetail" />
+          </StackPanel>
+          <StackPanel Margin="0,0,28,0">
+            <TextBlock Classes="muted" Text="Router (last 2 min)" />
+            <TextBlock Classes="value" x:Name="RouterText" Text="—" />
+            <TextBlock Classes="muted" x:Name="RouterDetail" />
+          </StackPanel>
+          <StackPanel Margin="0,0,28,0">
+            <TextBlock Classes="muted" Text="Internet (last 2 min)" />
+            <TextBlock Classes="value" x:Name="InternetText" Text="—" />
+            <TextBlock Classes="muted" x:Name="InternetDetail" />
+          </StackPanel>
+        </WrapPanel>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" Spacing="4" x:Name="RangeButtons">
+            <ToggleButton Content="15 min" Tag="0:15:00" />
+            <ToggleButton Content="1 h" Tag="1:00:00" IsChecked="True" />
+            <ToggleButton Content="6 h" Tag="6:00:00" />
+            <ToggleButton Content="24 h" Tag="1.00:00:00" />
+            <ToggleButton Content="7 d" Tag="7.00:00:00" />
+          </StackPanel>
+          <TextBlock Classes="muted" x:Name="RangeText" HorizontalAlignment="Right" Margin="0,4,0,0" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Shown when the collector isn't writing: the charts would otherwise just stop. -->
+    <Border DockPanel.Dock="Top" x:Name="CollectorBanner" IsVisible="False" Padding="16,8"
+            Background="{DynamicResource WarnBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock x:Name="CollectorText" VerticalAlignment="Center" TextWrapping="Wrap" />
+        <Button x:Name="StartCollector" Content="Start the collector" />
+      </StackPanel>
+    </Border>
+
+    <TabControl x:Name="Tabs" Padding="12,4,12,8">
+
+      <TabItem Header="Connection">
+        <Grid RowDefinitions="Auto,*,Auto,*,Auto,*,Auto,*,Auto">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="heading" Text="Signal (dBm)" />
+            <TextBlock Classes="muted" Margin="10,10,0,2" Text="dashed lines: switched access point" />
+          </StackPanel>
+          <sp:AvaPlot Grid.Row="1" x:Name="SignalPlot" />
+          <TextBlock Grid.Row="2" Classes="heading" Text="Wi-Fi link rate, sending (Mbit/s)" />
+          <sp:AvaPlot Grid.Row="3" x:Name="RatePlot" />
+          <StackPanel Grid.Row="4" Orientation="Horizontal">
+            <TextBlock Classes="heading" Text="Round trip (ms)" />
+            <Border Classes="swatch" x:Name="LatencyRouterSwatch" Margin="16,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Router" />
+            <Border Classes="swatch" x:Name="LatencyInternetSwatch" Margin="10,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Internet" />
+          </StackPanel>
+          <sp:AvaPlot Grid.Row="5" x:Name="LatencyPlot" />
+          <StackPanel Grid.Row="6" Orientation="Horizontal">
+            <TextBlock Classes="heading" Text="Lost pings (%)" />
+            <Border Classes="swatch" x:Name="LossRouterSwatch" Margin="16,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Router" />
+            <Border Classes="swatch" x:Name="LossInternetSwatch" Margin="10,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Internet" />
+          </StackPanel>
+          <sp:AvaPlot Grid.Row="7" x:Name="LossPlot" />
+          <TextBlock Grid.Row="8" x:Name="HoverText" Classes="muted" Margin="0,6,0,0" Text="Point at a chart to see the numbers for that moment." />
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Networks">
+        <Grid RowDefinitions="Auto,Auto,260,Auto,*">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="heading" Text="Networks heard, by channel" />
+            <Border Classes="swatch" x:Name="YoursSwatch" Margin="16,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Your network" />
+            <Border Classes="swatch" x:Name="OthersSwatch" Margin="10,10,4,0" />
+            <TextBlock Classes="muted" Margin="0,10,0,0" Text="Other networks" />
+          </StackPanel>
+          <TextBlock Grid.Row="1" Classes="muted" x:Name="ScanText" TextWrapping="Wrap" />
+          <Grid Grid.Row="2" ColumnDefinitions="*,2*">
+            <sp:AvaPlot x:Name="Band24Plot" />
+            <sp:AvaPlot Grid.Column="1" x:Name="Band5Plot" />
+          </Grid>
+          <TextBlock Grid.Row="3" x:Name="NetworkHoverText" Classes="muted" Margin="0,4" Text="Point at a dot to see which network it is." />
+          <DockPanel Grid.Row="4">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="200,140,170,56,90,90,70,150,*" Margin="12,6,12,4">
+              <TextBlock Classes="muted" Text="Network" />
+              <TextBlock Grid.Column="1" Classes="muted" Text="BSSID" />
+              <TextBlock Grid.Column="2" Classes="muted" Text="Maker" />
+              <TextBlock Grid.Column="3" Classes="muted" Text="Ch" />
+              <TextBlock Grid.Column="4" Classes="muted" Text="Typical" />
+              <TextBlock Grid.Column="5" Classes="muted" Text="Strongest" />
+              <TextBlock Grid.Column="6" Classes="muted" Text="Scans" />
+              <TextBlock Grid.Column="7" Classes="muted" Text="First heard" />
+            </Grid>
+            <ListBox x:Name="NetworkList">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:NetworkRow">
+                  <Grid ColumnDefinitions="200,140,170,56,90,90,70,150,*">
+                    <TextBlock Text="{Binding Name}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Text="{Binding Bssid}" FontFamily="monospace" FontSize="12" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding Maker}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="3" Text="{Binding Channel}" />
+                    <TextBlock Grid.Column="4" Text="{Binding Typical}" />
+                    <TextBlock Grid.Column="5" Text="{Binding Strongest}" />
+                    <TextBlock Grid.Column="6" Text="{Binding Scans}" />
+                    <TextBlock Grid.Column="7" Text="{Binding FirstHeard}" />
+                    <TextBlock Grid.Column="8" Text="{Binding Note}" Classes="muted" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Events">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Classes="muted" Margin="0,6,0,6"
+                     Text="Newest first. Click one to see the 15 minutes around it on the Connection tab." />
+          <ListBox x:Name="EventList">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:EventRow">
+                <Grid ColumnDefinitions="150,150,*">
+                  <TextBlock Text="{Binding When}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Kind}" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="{Binding Detail}" TextWrapping="Wrap" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>

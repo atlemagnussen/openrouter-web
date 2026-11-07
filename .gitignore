@@ -7,3 +7,5 @@ dhcpd.leases
 
 node_modules/
 .DS_Store
+
+reports/

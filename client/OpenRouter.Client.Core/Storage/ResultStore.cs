@@ -15,7 +15,11 @@ public sealed record RunData(
     IReadOnlyList<DnsSample> Dns,
     IReadOnlyList<HttpSample> Http,
     IReadOnlyList<WifiSample> Wifi,
-    IReadOnlyList<NetEvent> Events);
+    IReadOnlyList<NetEvent> Events)
+{
+    /// <summary>Wi-Fi scans (networks heard around); empty for runs without scanning.</summary>
+    public IReadOnlyList<ScanSample> Scans { get; init; } = [];
+}
 
 /// <summary>
 /// SQLite storage for runs. Times are Unix milliseconds (UTC) in <c>time_ms</c>, so rows line up with the router's
@@ -77,7 +81,23 @@ public sealed class ResultStore(string path) : IAsyncDisposable
             kind TEXT NOT NULL,
             detail TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS scans (
+            run_id INTEGER NOT NULL,
+            time_ms INTEGER NOT NULL,   -- one scan: all rows with the same time_ms
+            bssid TEXT NOT NULL,
+            ssid TEXT,                  -- null: hidden network
+            freq_mhz REAL NOT NULL,
+            signal_dbm INTEGER,
+            associated INTEGER NOT NULL -- 1: the network this machine was connected to
+        );
         CREATE INDEX IF NOT EXISTS pings_run ON pings (run_id, time_ms);
+        CREATE INDEX IF NOT EXISTS scans_time ON scans (time_ms);
+        CREATE INDEX IF NOT EXISTS scans_bssid ON scans (bssid, time_ms);
+        -- The desktop app reads across runs by time.
+        CREATE INDEX IF NOT EXISTS pings_time ON pings (time_ms);
+        CREATE INDEX IF NOT EXISTS wifi_time ON wifi (time_ms);
+        CREATE INDEX IF NOT EXISTS dns_time ON dns (time_ms);
+        CREATE INDEX IF NOT EXISTS events_time ON events (time_ms);
         CREATE INDEX IF NOT EXISTS dns_run ON dns (run_id, time_ms);
         CREATE INDEX IF NOT EXISTS http_run ON http (run_id, time_ms);
         CREATE INDEX IF NOT EXISTS wifi_run ON wifi (run_id, time_ms);
@@ -142,6 +162,9 @@ public sealed class ResultStore(string path) : IAsyncDisposable
                     ("$bssid", w.Bssid), ("$freq", w.FrequencyMhz), ("$signal", w.SignalDbm), ("$avg", w.SignalAverageDbm),
                     ("$tx", w.TxBitrateMbps), ("$rx", w.RxBitrateMbps), ("$txp", w.TxPackets), ("$txf", w.TxFailed),
                     ("$txr", w.TxRetries), ("$beacon", w.BeaconLoss)),
+                ScanSample n => Command("INSERT INTO scans VALUES ($run, $t, $bssid, $ssid, $freq, $signal, $associated);",
+                    ("$run", runId), ("$t", Ms(n.Time)), ("$bssid", n.Bssid), ("$ssid", n.Ssid), ("$freq", n.FrequencyMhz),
+                    ("$signal", n.SignalDbm), ("$associated", n.Associated ? 1 : 0)),
                 NetEvent e => Command("INSERT INTO events VALUES ($run, $t, $kind, $detail);",
                     ("$run", runId), ("$t", Ms(e.Time)), ("$kind", e.Kind), ("$detail", e.Detail)),
                 _ => throw new ArgumentException($"Unknown sample {sample.GetType().Name}."),
@@ -178,6 +201,8 @@ public sealed class ResultStore(string path) : IAsyncDisposable
             return rows;
         }
 
+        var scans = await Read("SELECT time_ms, bssid, ssid, freq_mhz, signal_dbm, associated FROM scans WHERE run_id = $run ORDER BY time_ms;",
+            r => new ScanSample(Time(r, 0), r.GetString(1), Text(r, 2), r.GetDouble(3), Int(r, 4), r.GetInt32(5) == 1));
         return new RunData(
             run,
             await Read("SELECT time_ms, target, label, ms FROM pings WHERE run_id = $run ORDER BY time_ms;",
@@ -194,7 +219,28 @@ public sealed class ResultStore(string path) : IAsyncDisposable
                 r => new WifiSample(Time(r, 0), r.GetString(1), r.GetInt32(2) == 1, Text(r, 3), Text(r, 4), Double(r, 5), Int(r, 6), Int(r, 7),
                     Double(r, 8), Double(r, 9), Long(r, 10), Long(r, 11), Long(r, 12), Long(r, 13))),
             await Read("SELECT time_ms, kind, detail FROM events WHERE run_id = $run ORDER BY time_ms;",
-                r => new NetEvent(Time(r, 0), r.GetString(1), r.GetString(2))));
+                r => new NetEvent(Time(r, 0), r.GetString(1), r.GetString(2))))
+        {
+            Scans = scans,
+        };
+    }
+
+    /// <summary>
+    /// Deletes measurements older than <paramref name="before"/>, and runs left empty by that. The file doesn't shrink,
+    /// but SQLite reuses the space, so a continuous collector stays about the same size.
+    /// </summary>
+    public async Task<int> DeleteBeforeAsync(DateTimeOffset before, CancellationToken cancellationToken)
+    {
+        await using var command = Command("""
+            DELETE FROM pings WHERE time_ms < $t;
+            DELETE FROM dns WHERE time_ms < $t;
+            DELETE FROM http WHERE time_ms < $t;
+            DELETE FROM wifi WHERE time_ms < $t;
+            DELETE FROM scans WHERE time_ms < $t;
+            DELETE FROM events WHERE time_ms < $t;
+            DELETE FROM runs WHERE coalesce(ended_ms, started_ms) < $t;
+            """, ("$t", Ms(before)));
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async ValueTask DisposeAsync()

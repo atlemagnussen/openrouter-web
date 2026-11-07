@@ -33,7 +33,23 @@ public sealed record WifiSample(
     long? TxRetries,
     long? BeaconLoss)
 {
-    public string? Band => FrequencyMhz switch
+    public string? Band => WifiBand.Name(FrequencyMhz);
+
+    /// <summary>802.11 channel number from the frequency.</summary>
+    public int? Channel => WifiBand.Channel(FrequencyMhz);
+}
+
+/// <summary>One network heard in a Wi-Fi scan: an access point, a mesh node's hidden backhaul, a Chromecast's setup network, ...</summary>
+public sealed record ScanSample(DateTimeOffset Time, string Bssid, string? Ssid, double FrequencyMhz, int? SignalDbm, bool Associated)
+{
+    public string Band => WifiBand.Name(FrequencyMhz)!;
+    public int Channel => WifiBand.Channel(FrequencyMhz)!.Value;
+}
+
+/// <summary>Band and channel from a Wi-Fi frequency.</summary>
+public static class WifiBand
+{
+    public static string? Name(double? frequencyMhz) => frequencyMhz switch
     {
         null => null,
         < 3000 => "2.4 GHz",
@@ -41,14 +57,13 @@ public sealed record WifiSample(
         _ => "6 GHz",
     };
 
-    /// <summary>802.11 channel number from the frequency.</summary>
-    public int? Channel => FrequencyMhz switch
+    public static int? Channel(double? frequencyMhz) => frequencyMhz switch
     {
         null => null,
         2484 => 14,
-        < 3000 => (int)((FrequencyMhz.Value - 2407) / 5),
-        < 5925 => (int)((FrequencyMhz.Value - 5000) / 5),
-        _ => (int)((FrequencyMhz.Value - 5950) / 5),
+        < 3000 => (int)((frequencyMhz.Value - 2407) / 5),
+        < 5925 => (int)((frequencyMhz.Value - 5000) / 5),
+        _ => (int)((frequencyMhz.Value - 5950) / 5),
     };
 }
 

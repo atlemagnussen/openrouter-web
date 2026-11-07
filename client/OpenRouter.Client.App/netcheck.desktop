@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=netcheck
+GenericName=Network monitor
+Comment=Wi-Fi signal, latency and the networks around, from the netcheck collector
+Exec=netcheck-app
+Icon=netcheck
+Terminal=false
+Categories=Network;Monitor;
+Keywords=wifi;network;ping;signal;
+StartupWMClass=netcheck-app

@@ -13,6 +13,18 @@ public sealed record RunOptions
     public TimeSpan WifiInterval { get; init; } = TimeSpan.FromSeconds(2);
     public TimeSpan StatusInterval { get; init; } = TimeSpan.FromSeconds(15);
 
+    /// <summary>How often to scan for the Wi-Fi networks around; null: never.</summary>
+    public TimeSpan? ScanInterval { get; init; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Collector mode (<c>netcheck daemon</c>): runs until stopped, and ends the run when the machine joins another
+    /// network or loses it for a while, so each run is one network.
+    /// </summary>
+    public bool Continuous { get; init; }
+
+    /// <summary>Collector mode: delete measurements older than this.</summary>
+    public TimeSpan Keep { get; init; } = TimeSpan.FromDays(30);
+
     /// <summary>Extra ping targets; the gateway is always added.</summary>
     public IReadOnlyList<string> PingTargets { get; init; } = ["1.1.1.1", "8.8.8.8", "2606:4700:4700::1111"];
 
@@ -91,6 +103,8 @@ public sealed record RunOptions
                 "--ping-interval" => options with { PingInterval = ParseDuration(Value()) ?? throw new FormatException("--ping-interval can't be 0.") },
                 "--dns-interval" => options with { DnsInterval = ParseDuration(Value()) ?? throw new FormatException("--dns-interval can't be 0.") },
                 "--http-interval" => options with { HttpInterval = ParseDuration(Value()) ?? throw new FormatException("--http-interval can't be 0.") },
+                "--scan-interval" => options with { ScanInterval = ParseDuration(Value()) },
+                "--keep" => options with { Keep = ParseDuration(Value()) ?? throw new FormatException("--keep can't be 0.") },
                 _ => throw new FormatException($"Unknown option {args[i]}. Try netcheck help."),
             };
         }

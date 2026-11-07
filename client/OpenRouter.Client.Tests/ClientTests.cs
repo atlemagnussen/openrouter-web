@@ -142,7 +142,31 @@ public class ClientTests
             [("gateway", "192.168.1.1")] = Outage.Find(pings.Select(p => (p.Time, p.Milliseconds is null))),
         };
 
-        Assert.Contains(RunReport.Hints(data, outages), h => h.StartsWith("1 of 1 outages started within 15 s of switching access point"));
+        Assert.Contains(RunReport.Hints(data, outages), h => h.StartsWith("1 of 1 router outages started within 15 s after switching access point"));
+    }
+
+    [Fact]
+    public void An_outage_that_starts_before_the_roam_is_not_blamed_on_roaming()
+    {
+        var pings = Pings("gateway", "192.168.1.1", 60, i => i is >= 30 and < 36 ? null : 3).ToList();
+        var data = Run(pings, events: [new NetEvent(T0.AddSeconds(40), "roam", "a → b")]);
+        var outages = new Dictionary<(string, string), IReadOnlyList<Outage>>
+        {
+            [("gateway", "192.168.1.1")] = Outage.Find(pings.Select(p => (p.Time, p.Milliseconds is null))),
+        };
+
+        Assert.DoesNotContain(RunReport.Hints(data, outages), h => h.Contains("roaming"));
+    }
+
+    [Fact]
+    public void Lowest_link_rates_with_a_good_signal_point_at_interference()
+    {
+        var pings = Pings("gateway", "192.168.1.1", 100, i => i is >= 50 and < 55 ? null : 3).ToList();
+        var wifi = Enumerable.Range(0, 50).Select(i => new WifiSample(T0.AddSeconds(i * 2), "wlan0", true, "HomeNet", "02:94:ed:0f:87:47", 5180,
+            -55, -55, i is >= 24 and < 28 ? 6.5 : 300, 300, null, null, null, null)).ToList();
+
+        var hint = Assert.Single(RunReport.Hints(Run(pings, wifi: wifi), new Dictionary<(string, string), IReadOnlyList<Outage>>()), h => h.Contains("interference or a busy channel"));
+        Assert.Contains("100% of the lost router pings", hint);
     }
 
     [Fact]

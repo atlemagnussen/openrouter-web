@@ -14,7 +14,7 @@ public static class Format
         { TotalSeconds: < 60 } => $"{span.TotalSeconds:0.#} s",
         { TotalMinutes: < 60 } => span.Seconds == 0 ? $"{span.Minutes} min" : $"{span.Minutes} min {span.Seconds} s",
         { TotalHours: < 24 } => span.Minutes == 0 ? $"{(int)span.TotalHours} h" : $"{(int)span.TotalHours} h {span.Minutes} min",
-        _ => $"{(int)span.TotalDays} d {span.Hours} h",
+        _ => span.Hours == 0 ? $"{(int)span.TotalDays} d" : $"{(int)span.TotalDays} d {span.Hours} h",
     };
 
     public static string Percent(double percent) => percent switch

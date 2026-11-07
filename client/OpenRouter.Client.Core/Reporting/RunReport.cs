@@ -6,7 +6,7 @@ namespace OpenRouter.Client.Reporting;
 /// <summary>Turns a run's samples into a readable summary, with hints about where the problem is.</summary>
 public static class RunReport
 {
-    public static string Build(RunData data, TimeZoneInfo zone)
+    public static string Build(RunData data, TimeZoneInfo zone, Probes.Vendors? vendors = null)
     {
         var run = data.Run;
         var report = new StringBuilder();
@@ -103,6 +103,20 @@ public static class RunReport
             report.AppendLine();
         }
 
+        // Networks around: what shares the channel this machine used most.
+        if (data.Scans.Count > 0 && HomeChannel(data) is { } home)
+        {
+            var heard = Neighbourhood.Summarise(data.Scans);
+            var scans = data.Scans.Select(s => s.Time).Distinct().Count();
+            var onChannel = heard.Where(n => n.Band == home.Band && n.Channel == home.Channel).ToList();
+            var makers = vendors?.LookupAll(heard.Select(n => n.Bssid));
+            report.AppendLine($"Networks on {home.Band} channel {home.Channel} ({scans} scans, {heard.Count} networks heard in all)");
+            foreach (var n in onChannel.Take(12))
+                report.AppendLine($"  {(n.Ssid ?? "(hidden)"),-24} {n.Bssid}  {(n.MedianDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  " +
+                    $"{makers?[n.Bssid] ?? ""}{(n.Associated ? "  (connected)" : "")}");
+            report.AppendLine();
+        }
+
         // Events
         if (data.Events.Count > 0)
         {
@@ -121,6 +135,12 @@ public static class RunReport
             report.AppendLine($"  - {hint}");
         return report.ToString();
     }
+
+    /// <summary>The channel this machine was connected on most of the run.</summary>
+    private static (double FrequencyMhz, string Band, int Channel, string? Ssid)? HomeChannel(RunData data) =>
+        data.Wifi.Where(w => w.Connected && w.FrequencyMhz is not null).GroupBy(w => w.FrequencyMhz!.Value).MaxBy(g => g.Count()) is { } most
+            ? (most.Key, WifiBand.Name(most.Key)!, WifiBand.Channel(most.Key)!.Value, most.First().Ssid)
+            : null;
 
     /// <summary>Rules of thumb that point at where a problem sits: Wi-Fi, the router, DNS or the ISP.</summary>
     public static IReadOnlyList<string> Hints(RunData data, IReadOnlyDictionary<(string Label, string Target), IReadOnlyList<Outage>> outages)
@@ -168,19 +188,44 @@ public static class RunReport
             if (slowBand > wifi.Count / 2)
                 hints.Add($"Connected on 2.4 GHz {Format.Percent(100.0 * slowBand / wifi.Count)} of the time. It's slower and more crowded than 5 GHz; " +
                     "if 5 GHz reaches this spot, consider a separate 5 GHz network name or band steering on the access point.");
+            // The lowest rates with a good signal: the radio can't get frames through for reasons other than distance.
+            var collapsed = wifi.Where(w => w.TxBitrateMbps <= 13 && w.SignalDbm >= -65).ToList();
+            if (collapsed.Count > 0 && collapsed.Count >= wifi.Count * 0.01)
+            {
+                var gatewayLoss = data.Pings.Where(p => p.Label == "gateway" && p.Milliseconds is null).ToList();
+                var lostThen = gatewayLoss.Count(p => collapsed.Any(w => Math.Abs((p.Time - w.Time).TotalSeconds) <= 5));
+                hints.Add($"The link rate fell to {collapsed.Min(w => w.TxBitrateMbps):0.#} Mbit/s or close to it " +
+                    $"{Format.Percent(100.0 * collapsed.Count / wifi.Count)} of the time while the signal was still good (−65 dBm or better)" +
+                    (gatewayLoss.Count > 0 ? $", and {Format.Percent(100.0 * lostThen / gatewayLoss.Count)} of the lost router pings fell in those moments" : "") +
+                    ": interference or a busy channel, not distance. Try another channel on the access point.");
+            }
             if (TxFailure(wifi) is { Percent: > 2 } failed)
                 hints.Add($"{Format.Percent(failed.Percent)} of sent packets failed at the Wi-Fi level: interference or a weak link.");
         }
 
-        // Outages close to a roam point at roaming between access points.
+        // Other loud networks on the same channel take turns with yours for airtime.
+        if (data.Scans.Count > 0 && HomeChannel(data) is { } home)
+        {
+            var others = Neighbourhood.SharingChannel(Neighbourhood.Summarise(data.Scans), home.FrequencyMhz, home.Ssid);
+            if (others.Count > 0)
+                hints.Add($"{others.Count} other network{(others.Count == 1 ? "" : "s")} at −70 dBm or stronger share {home.Band} channel {home.Channel} " +
+                    $"({string.Join(", ", others.Take(5).Select(n => $"{n.Ssid ?? "hidden"} {n.MedianDbm} dBm"))}). They take turns with yours " +
+                    "for airtime; if one of them is yours, move it to another channel.");
+        }
+
+        // Outages that start just after a roam point at roaming. One that starts before the roam is the laptop
+        // leaving a link that had already failed, which says nothing against roaming. Router outages count when
+        // there are any: every target drops at once when the local link fails, so counting them all repeats one outage.
         var roamTimes = data.Events.Where(e => e.Kind is "roam" or "wifi-disconnected").Select(e => e.Time).ToList();
-        var allOutages = outages.SelectMany(o => o.Value).ToList();
-        var nearRoam = allOutages.Count(o => roamTimes.Any(t => Math.Abs((o.Start - t).TotalSeconds) < 15));
-        if (nearRoam > 0)
-            hints.Add($"{nearRoam} of {allOutages.Count} outages started within 15 s of switching access point or losing Wi-Fi: " +
-                "roaming between the mesh nodes is a likely cause.");
-        else if (roamTimes.Count > 0 && data.Events.Count(e => e.Kind == "roam") > 10)
-            hints.Add($"Switched access point {data.Events.Count(e => e.Kind == "roam")} times: the laptop sits between two nodes and keeps changing.");
+        var routerOutages = outages.Where(o => o.Key.Label.StartsWith("gateway")).SelectMany(o => o.Value).ToList();
+        var counted = routerOutages.Count > 0 ? routerOutages : outages.SelectMany(o => o.Value).ToList();
+        var afterRoam = counted.Count(o => roamTimes.Any(t => (o.Start - t).TotalSeconds is > -3 and < 15));
+        var roamCount = data.Events.Count(e => e.Kind == "roam");
+        if (afterRoam > 0)
+            hints.Add($"{afterRoam} of {counted.Count} {(routerOutages.Count > 0 ? "router " : "")}outages started within 15 s after switching access point " +
+                "or losing Wi-Fi: roaming between the mesh nodes is a likely cause.");
+        else if (roamCount > 10)
+            hints.Add($"Switched access point {roamCount} times: the laptop sits between two nodes and keeps changing.");
         return hints;
     }
 

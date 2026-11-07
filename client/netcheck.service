@@ -1,0 +1,16 @@
+# netcheck's collector as a systemd user service: measures while you're logged in, into
+# ~/.local/share/openrouter-client/netcheck.db. Installed by install.sh; see README.md.
+[Unit]
+Description=netcheck collector (network measurements for the netcheck app)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+ExecStart=%h/.local/lib/netcheck/cli/netcheck daemon
+Restart=on-failure
+RestartSec=10
+Nice=5
+
+[Install]
+WantedBy=default.target

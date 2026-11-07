@@ -7,9 +7,10 @@ It's an ASP.NET Core (.NET 10) Razor Pages app in [`web/`](web/), with a small T
 (Vite, uPlot) for the charts. See [AGENTS.md](AGENTS.md) for how the router is set up and how the code
 is organised.
 
-The [`client/`](client/) folder has **netcheck**, a command-line tool for a laptop. It measures the
-connection from the device's side for a few hours (pings, DNS, HTTPS timing, Wi-Fi signal and roaming)
-and says whether problems come from the Wi-Fi, the router, DNS or the ISP. See [client/README.md](client/README.md).
+The [`client/`](client/) folder has **netcheck**, for a Linux laptop. It measures the connection from the
+device's side (pings, DNS, HTTPS timing, Wi-Fi signal and roaming, the networks around) and says whether
+problems come from the Wi-Fi, the router, DNS or the ISP: as a command-line run of a few hours, or
+continuously with a desktop app that charts it. See [client/README.md](client/README.md).
 
 ## Development
 
