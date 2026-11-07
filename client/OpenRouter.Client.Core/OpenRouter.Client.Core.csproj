@@ -14,7 +14,7 @@
 
   <!-- The same minimal DNS wire format the router app uses for its probes. -->
   <ItemGroup>
-    <Compile Include="../../web/OpenRouter.Web/Probes/DnsMessage.cs" Link="Probes/DnsMessage.cs" />
+    <Compile Include="../../router/OpenRouter.Web/Probes/DnsMessage.cs" Link="Probes/DnsMessage.cs" />
   </ItemGroup>
 
 </Project>

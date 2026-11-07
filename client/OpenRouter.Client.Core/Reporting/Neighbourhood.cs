@@ -9,6 +9,9 @@ public sealed record HeardNetwork(
     public int Channel => WifiBand.Channel(FrequencyMhz)!.Value;
 }
 
+/// <summary>Whose a network is: the one you're connected to (all its access points), another of yours, or someone else's.</summary>
+public enum Ownership { Connected, Mine, Other }
+
 /// <summary>Which networks are around, and which compete with yours for airtime.</summary>
 public static class Neighbourhood
 {
@@ -25,6 +28,31 @@ public static class Neighbourhood
             })
             .OrderByDescending(n => n.MedianDbm ?? -200)
             .ToList();
+
+    /// <summary>
+    /// Whose each network is. A hidden network takes the owner of a named one on the same device: mesh systems give
+    /// their hidden links addresses that differ from the named network's only in the first and last byte.
+    /// </summary>
+    public static IReadOnlyDictionary<string, Ownership> Classify(IReadOnlyList<HeardNetwork> networks, string? connectedSsid,
+        Settings.ClientSettings settings)
+    {
+        Ownership Named(HeardNetwork n) =>
+            n.Ssid is not null && n.Ssid == connectedSsid ? Ownership.Connected
+            : settings.IsMine(n.Ssid, n.Bssid) ? Ownership.Mine
+            : Ownership.Other;
+
+        var result = networks.ToDictionary(n => n.Bssid, Named);
+        foreach (var hidden in networks.Where(n => n.Ssid is null && result[n.Bssid] == Ownership.Other))
+        {
+            var sibling = networks.FirstOrDefault(n => n.Ssid is not null && result[n.Bssid] != Ownership.Other && SameDevice(n.Bssid, hidden.Bssid));
+            if (sibling is not null)
+                result[hidden.Bssid] = result[sibling.Bssid];
+        }
+        return result;
+    }
+
+    /// <summary>Addresses that differ only in the first and last byte: one device's networks.</summary>
+    public static bool SameDevice(string a, string b) => a.Length == 17 && b.Length == 17 && a != b && a[3..14] == b[3..14];
 
     /// <summary>
     /// Other networks that share the channel of <paramref name="frequencyMhz"/> and are loud enough to matter: on

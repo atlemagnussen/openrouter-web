@@ -4,8 +4,8 @@ A web interface for a self-built Linux router, in the spirit of a consumer route
 It starts read-only (show clients, leases, DHCP and IPv6 config) and will grow editing,
 authentication and background tasks.
 
-- `web/`: the router app (.NET 10, ASP.NET Core Razor Pages), its tests, the TypeScript chart client
-  (`web/client/`), made-up sample data, and the deploy scripts (`publish.sh`, `run.sh`, `openrouter-web.service`).
+- `router/`: the router app (.NET 10, ASP.NET Core Razor Pages), its tests, the TypeScript chart client
+  (`router/client/`), made-up sample data, and the deploy scripts (`publish.sh`, `run.sh`, `openrouter-web.service`).
 - `client/`: `netcheck`, .NET 10 tools for a Linux laptop that measure the connection from the device side
   (ping, DNS, HTTPS timing, Wi-Fi via `iw`, scans of the networks around) into their own SQLite file, to compare
   with the router's history. `OpenRouter.Client.Core` (probes, storage, report), `OpenRouter.Client` (the `netcheck`
@@ -15,7 +15,7 @@ authentication and background tasks.
   the file, not by a project reference. Avalonia and ScottPlot are the client's only extra packages besides SQLite.
 
 **This repository is public.** Never commit real router data: config files, leases, MAC addresses,
-hostnames, IPv6 prefixes or public IPs. Use the made-up data in `web/samples/`.
+hostnames, IPv6 prefixes or public IPs. Use the made-up data in `router/samples/`.
 
 ## The router
 
@@ -51,7 +51,7 @@ Facts that shape the code:
 - .NET 10, ASP.NET Core **Razor Pages** (not Blazor, not MVC controllers, no SPA).
   Server-rendered HTML; forms post back to page handlers. If something needs to update live,
   use htmx partials rather than adding a JS framework.
-- Charts and other browser code are TypeScript in `web/client/` (Vite, uPlot), built into
+- Charts and other browser code are TypeScript in `router/client/` (Vite, uPlot), built into
   `OpenRouter.Web/wwwroot/dist/` (gitignored) with stable file names; pages include them with
   `asp-append-version`. Scripts enhance server-rendered pages and fetch JSON from page handlers
   (`?handler=...`); they don't take over the page. Chart colours come from `--series-*` tokens in `site.css`.
@@ -59,7 +59,7 @@ Facts that shape the code:
   no jQuery, no CDN assets (the router may be offline).
 - Nullable enabled, file-scoped namespaces, records for data models, `sealed` by default.
 - Paths and sockets come from `RouterOptions` (`Router` section in appsettings). Development
-  points at `web/samples/`; never hard-code system paths elsewhere.
+  points at `router/samples/`; never hard-code system paths elsewhere.
 - Keep parsing pure: parsers take text or JSON and return models, with no file or process
   access, so they're unit-tested in `OpenRouter.Web.Tests` against sample input.
   File, socket and process access lives in thin services around them.
@@ -69,7 +69,7 @@ Facts that shape the code:
 - Run external commands with `ProcessStartInfo.ArgumentList`, never by concatenating a
   command string, and never pass user input to a shell.
 
-## Code layout (`web/OpenRouter.Web`)
+## Code layout (`router/OpenRouter.Web`)
 
 - `Kea/`, `Radvd/`, `Network/`: one folder per data source, each with models, a pure parser
   and a thin service (`KeaService`, `RadvdService`, `IpCommand`) that does the I/O.
@@ -120,7 +120,7 @@ Facts that shape the code:
 
 ## Commands
 
-Run from `web/`:
+Run from `router/`:
 
 ```sh
 dotnet build
@@ -131,7 +131,7 @@ cd client && npm run dev                 # rebuild the TypeScript client on chan
 
 `dotnet build` builds the client when `wwwroot/dist` is missing; Release builds always rebuild it.
 
-Deployment: `web/publish.sh` builds the client and a self-contained Release build, installs it to
+Deployment: `router/publish.sh` builds the client and a self-contained Release build, installs it to
 `/opt/openrouter-web` and restarts the `openrouter-web` systemd service
-(`web/openrouter-web.service`, runs as the `openrouter` user). Keep that unit free of options that imply
+(`router/openrouter-web.service`, runs as the `openrouter` user). Keep that unit free of options that imply
 `NoNewPrivileges`, or sudo stops working.

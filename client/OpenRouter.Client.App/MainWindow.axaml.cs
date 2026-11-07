@@ -8,6 +8,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using OpenRouter.Client.Probes;
 using OpenRouter.Client.Reporting;
+using OpenRouter.Client.Settings;
 using OpenRouter.Client.Storage;
 using ScottPlot;
 using ScottPlot.Avalonia;
@@ -19,7 +20,13 @@ namespace OpenRouter.Client.App;
 
 /// <summary>One row of the networks table.</summary>
 public sealed record NetworkRow(string Name, string Bssid, string Maker, string Channel, string Typical, string Strongest, string Scans,
-    string FirstHeard, string Note, FontWeight Weight);
+    string FirstHeard, string Note, FontWeight Weight)
+{
+    public string? Ssid { get; init; }
+    public IBrush Dot { get; init; } = Brushes.Transparent;
+    public bool Mine { get; init; }
+    public bool CanMark { get; init; }
+}
 
 /// <summary>One row of the events list.</summary>
 public sealed record EventRow(DateTimeOffset Time, string When, string Kind, string Detail);
@@ -36,6 +43,7 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private HistoryReader? _reader;
     private Vendors _vendors = Vendors.Empty;
+    private ClientSettings _settings = ClientSettings.Load(ClientSettings.DefaultPath);
     private ChartStyle _style = ChartStyle.Light;
     private bool _busy;
     private bool _quitting;
@@ -91,6 +99,15 @@ public sealed partial class MainWindow : Window
             _vendors = await Task.Run(Vendors.Load);
             await RefreshAsync();
             _timer.Start();
+            // For development: --screenshot file.png renders the window once it has data, then quits.
+            if (Array.IndexOf(args, "--screenshot") is var shot and >= 0 && shot + 1 < args.Length)
+            {
+                await Task.Delay(1500);
+                var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height));
+                bitmap.Render(this);
+                bitmap.Save(args[shot + 1], new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                Quit();
+            }
         };
     }
 
@@ -399,36 +416,38 @@ public sealed partial class MainWindow : Window
         var makers = _vendors.LookupAll(heard.Select(n => n.Bssid));
         var connected = heard.FirstOrDefault(n => n.Bssid == wifi?.Bssid) ?? heard.FirstOrDefault(n => n.Associated);
         var ownSsid = wifi?.Ssid ?? connected?.Ssid;
-        var ownBssids = heard.Where(n => n.Ssid is not null && n.Ssid == ownSsid).Select(n => n.Bssid).ToList();
-        // Yours: the same name, or a hidden network on the same device (mesh backhaul), whose address differs only at the ends.
-        bool Yours(HeardNetwork n) => (n.Ssid is not null && n.Ssid == ownSsid) ||
-            (n.Ssid is null && ownBssids.Any(b => b.Length == 17 && n.Bssid.Length == 17 && b[3..14] == n.Bssid[3..14]));
+        var owners = Neighbourhood.Classify(heard, ownSsid, _settings);
         var home = wifi is { Connected: true, FrequencyMhz: { } freq } ? (Band: WifiBand.Name(freq), Channel: WifiBand.Channel(freq)) : default;
 
         var scanCount = scans.Select(s => s.Time).Distinct().Count();
         var sharing = wifi is { Connected: true, FrequencyMhz: { } f } ? Neighbourhood.SharingChannel(heard, f, ownSsid) : [];
+        string Named(HeardNetwork n) => $"{n.Ssid ?? "hidden"}{(owners[n.Bssid] == Ownership.Mine ? " (yours)" : "")}";
         ScanText.Text = scanCount == 0
             ? "No scans in this range yet. The collector scans every 2 minutes while connected to Wi-Fi."
             : $"{heard.Count} networks in {scanCount} scans, last at {Local(scans[^1].Time):HH:mm:ss}. Signal is the median over the scans." +
               (sharing.Count > 0
                   ? $" {sharing.Count} other network{(sharing.Count == 1 ? "" : "s")} at −70 dBm or stronger share your channel ({home.Channel}): " +
-                    string.Join(", ", sharing.Select(n => n.Ssid ?? "hidden")) + "."
-                  : "");
+                    string.Join(", ", sharing.Select(Named).Distinct()) + "."
+                  : "") +
+              " Tick \"Mine\" on your other networks to tell them apart.";
 
         _dots.Clear();
-        DrawChannels(Band24Plot, "2.4 GHz", 0, 14, heard, Yours, makers, connected);
-        DrawChannels(Band5Plot, "5 GHz", 30, 170, heard, Yours, makers, connected);
+        DrawChannels(Band24Plot, "2.4 GHz", 0, 14, heard, owners, makers, connected);
+        DrawChannels(Band5Plot, "5 GHz", 30, 170, heard, owners, makers, connected);
 
         NetworkList.ItemsSource = heard
             .OrderBy(n => n.FrequencyMhz).ThenByDescending(n => n.MedianDbm ?? -200)
             .Select(n =>
             {
+                var owner = owners[n.Bssid];
                 var notes = new List<string>();
                 if (n.Bssid == connected?.Bssid)
                     notes.Add("connected");
-                else if (Yours(n))
+                else if (owner == Ownership.Connected)
                     notes.Add(n.Ssid is null ? "your network (hidden backhaul)" : "your network");
-                else if (n.Band == home.Band && n.Channel == home.Channel)
+                else if (owner == Ownership.Mine)
+                    notes.Add(n.Ssid is null ? "yours (hidden backhaul)" : "yours");
+                if (owner != Ownership.Connected && n.Band == home.Band && n.Channel == home.Channel)
                     notes.Add("shares your channel");
                 if (firstHeard.TryGetValue(n.Bssid, out var first) && now - first < TimeSpan.FromDays(1) && first > firstHeard.Values.Min() + TimeSpan.FromHours(1))
                     notes.Add("new today");
@@ -437,51 +456,89 @@ public sealed partial class MainWindow : Window
                 return new NetworkRow(
                     n.Ssid ?? "(hidden)", n.Bssid, makers[n.Bssid] ?? "", n.Channel.ToString(), Dbm(n.MedianDbm), Dbm(n.StrongestDbm),
                     n.TimesHeard.ToString(), firstHeard.TryGetValue(n.Bssid, out var f2) ? When(f2, now) : "",
-                    string.Join(" · ", notes), n.Bssid == connected?.Bssid ? FontWeight.SemiBold : FontWeight.Normal);
+                    string.Join(" · ", notes), n.Bssid == connected?.Bssid ? FontWeight.SemiBold : FontWeight.Normal)
+                {
+                    Ssid = n.Ssid,
+                    Dot = Brush(ColorOf(owner)),
+                    // Ticked: marked as yours, or a hidden network that belongs to one that is. The connected one always counts.
+                    Mine = owner != Ownership.Other,
+                    CanMark = owner != Ownership.Connected && (owner == Ownership.Other || _settings.IsMine(n.Ssid, n.Bssid)),
+                };
             })
             .ToList();
     }
 
+    /// <summary>From the networks table: mark a network as yours, or not, and redraw.</summary>
+    private void MineClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { DataContext: NetworkRow row } box)
+            return;
+        _settings = _settings.With(row.Ssid, row.Bssid, box.IsChecked == true);
+        try
+        {
+            _settings.Save(ClientSettings.DefaultPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ScanText.Text = $"Couldn't save {ClientSettings.DefaultPath}: {ex.Message}";
+        }
+        _networksLoaded = DateTimeOffset.MinValue;
+        _ = RefreshAsync();
+    }
+
+    private PlotColor ColorOf(Ownership owner) => owner switch
+    {
+        Ownership.Connected => _style.Series1,
+        Ownership.Mine => _style.Series3,
+        _ => _style.Series2,
+    };
+
     private void DrawChannels(AvaPlot control, string band, double xMin, double xMax, IReadOnlyList<HeardNetwork> heard,
-        Func<HeardNetwork, bool> yours, IReadOnlyDictionary<string, string?> makers, HeardNetwork? connected)
+        IReadOnlyDictionary<string, Ownership> owners, IReadOnlyDictionary<string, string?> makers, HeardNetwork? connected)
     {
         _style.Reset(control);
         var plot = control.Plot;
         var networks = heard.Where(n => n.Band == band && n.MedianDbm is not null).ToList();
-        foreach (var n in networks.OrderBy(yours)) // yours on top
+        // Others first, then yours, then the connected network: your own dots end up on top.
+        foreach (var n in networks.OrderByDescending(n => owners[n.Bssid]))
         {
-            var color = yours(n) ? _style.Series1 : _style.Series2;
+            var color = ColorOf(owners[n.Bssid]);
             var isConnected = n.Bssid == connected?.Bssid;
-            var dot = plot.Add.Marker(n.Channel, n.MedianDbm!.Value, MarkerShape.FilledCircle, isConnected ? 13 : 9, color);
+            plot.Add.Marker(n.Channel, n.MedianDbm!.Value, MarkerShape.FilledCircle, isConnected ? 13 : 9, color);
             if (isConnected)
-            {
-                // A ring in the surface colour, then one in the series colour: the network you're on.
-                plot.Add.Marker(n.Channel, n.MedianDbm.Value, MarkerShape.OpenCircle, 20, color).MarkerStyle.LineWidth = 2;
-            }
+                plot.Add.Marker(n.Channel, n.MedianDbm.Value, MarkerShape.OpenCircle, 20, color).MarkerStyle.LineWidth = 2; // the network you're on
+            var whose = owners[n.Bssid] switch { Ownership.Connected => " · your network", Ownership.Mine => " · yours", _ => "" };
             _dots.Add((control, n.Channel, n.MedianDbm.Value,
                 $"{n.Ssid ?? "(hidden)"} · {n.Bssid} · {makers[n.Bssid] ?? "unknown maker"} · {band} ch {n.Channel} · " +
-                $"{n.MedianDbm} dBm typical, {n.StrongestDbm} dBm strongest · heard in {n.TimesHeard} scans" + (isConnected ? " · connected" : "")));
+                $"{n.MedianDbm} dBm typical, {n.StrongestDbm} dBm strongest · heard in {n.TimesHeard} scans" + (isConnected ? " · connected" : whose)));
         }
-        // Names only on the loud ones, one per channel. A name that would run into the previous one moves up a line.
-        var placed = new List<(double Channel, double Dbm, float OffsetY)>();
-        var span = xMax - xMin;
-        foreach (var group in networks.Where(n => n.MedianDbm >= -72).GroupBy(n => n.Channel).OrderBy(g => g.Key))
+        // Names only on the loud ones, one per channel and owner (so your own networks always get theirs).
+        // Labels are placed as boxes in pixels; one that would overlap another moves up above it.
+        var width = control.Bounds.Width > 0 ? control.Bounds.Width : 400;
+        var height = control.Bounds.Height > 0 ? control.Bounds.Height : 260;
+        double Px(double channel) => (channel - xMin) / (xMax - xMin) * width;
+        double Py(double dbm) => (-25 - dbm) / 75 * height;
+        var placed = new List<(double Left, double Right, double Top, double Bottom)>();
+        foreach (var group in networks.Where(n => n.MedianDbm >= -72).GroupBy(n => (n.Channel, Owner: owners[n.Bssid])).OrderBy(g => g.Key.Owner).ThenByDescending(g => g.Max(n => n.MedianDbm)))
         {
-            var loudest = group.OrderByDescending(n => n.MedianDbm).First();
+            var loudest = group.OrderByDescending(n => n.Ssid is not null).ThenByDescending(n => n.MedianDbm).First();
             var text = $"{loudest.Ssid ?? "(hidden)"}{(group.Count() > 1 ? $" +{group.Count() - 1}" : "")}";
-            var offsetY = -4f;
-            while (placed.Any(p => Math.Abs(p.Channel - loudest.Channel) < span * 0.3 && Math.Abs(p.Dbm - loudest.MedianDbm!.Value) < 8 && p.OffsetY == offsetY))
-                offsetY -= 15;
-            placed.Add((loudest.Channel, loudest.MedianDbm!.Value, offsetY));
+            var textWidth = text.Length * 6.4 + 4;
+            // Near the right edge the name goes to the left of the dot, so it isn't cut off.
+            var rightSide = loudest.Channel > xMin + (xMax - xMin) * 0.7;
+            var x = Px(loudest.Channel);
+            var (left, right) = rightSide ? (x - 8 - textWidth, x - 8) : (x + 8, x + 8 + textWidth);
+            var bottom = Py(loudest.MedianDbm!.Value) - 2;
+            while (placed.FirstOrDefault(p => p.Left < right && left < p.Right && p.Top < bottom && bottom - 14 < p.Bottom) is { Right: > 0 } hit)
+                bottom = hit.Top - 1;
+            placed.Add((left, right, bottom - 14, bottom));
 
             var label = plot.Add.Text(text, loudest.Channel, loudest.MedianDbm!.Value);
             label.LabelFontColor = _style.Text;
             label.LabelFontSize = 11;
-            // Near the right edge the name goes to the left of the dot, so it isn't cut off.
-            var rightSide = loudest.Channel > xMin + span * 0.7;
             label.LabelAlignment = rightSide ? Alignment.LowerRight : Alignment.LowerLeft;
             label.OffsetX = rightSide ? -8 : 8;
-            label.OffsetY = offsetY;
+            label.OffsetY = (float)(bottom - Py(loudest.MedianDbm.Value));
         }
         plot.Axes.SetLimits(xMin, xMax, -100, -25);
         plot.Axes.Bottom.Label.Text = $"{band} channel";
@@ -523,11 +580,13 @@ public sealed partial class MainWindow : Window
     private void ApplyTheme()
     {
         _style = ActualThemeVariant == ThemeVariant.Dark ? ChartStyle.Dark : ChartStyle.Light;
-        IBrush Brush(PlotColor c) => new SolidColorBrush(Avalonia.Media.Color.FromArgb(c.A, c.R, c.G, c.B));
-        LatencyRouterSwatch.Background = LossRouterSwatch.Background = YoursSwatch.Background = Brush(_style.Series1);
+        LatencyRouterSwatch.Background = LossRouterSwatch.Background = ConnectedSwatch.Background = Brush(_style.Series1);
         LatencyInternetSwatch.Background = LossInternetSwatch.Background = OthersSwatch.Background = Brush(_style.Series2);
+        MineSwatch.Background = Brush(_style.Series3);
         Reload();
     }
+
+    private static IBrush Brush(PlotColor c) => new SolidColorBrush(Avalonia.Media.Color.FromArgb(c.A, c.R, c.G, c.B));
 
     private static double X(DateTimeOffset time) => time.LocalDateTime.ToOADate();
 

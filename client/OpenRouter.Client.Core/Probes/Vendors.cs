@@ -61,8 +61,8 @@ public sealed class Vendors(IReadOnlyDictionary<string, string> byPrefix)
         var result = all.ToDictionary(b => b, Lookup);
         foreach (var bssid in all.Where(b => result[b] == "(random address)"))
         {
-            var sibling = all.FirstOrDefault(other => other != bssid && other.Length == 17 && bssid.Length == 17 &&
-                other[3..14] == bssid[3..14] && result[other] is { } maker && maker != "(random address)");
+            var sibling = all.FirstOrDefault(other => Reporting.Neighbourhood.SameDevice(other, bssid) &&
+                result[other] is { } maker && maker != "(random address)");
             if (sibling is not null)
                 result[bssid] = result[sibling];
         }

@@ -65,8 +65,10 @@ tray menu or with Ctrl+Q. It shows:
 - **Connection:** charts for signal (with roams marked), link rate, round trip, and lost pings, over 15 minutes up
   to 7 days. Point at a chart for that moment's numbers. Gaps are times nothing was measured (asleep, collector off).
 - **Networks:** every network heard in the range's scans, as dots by channel and signal, and as a table with the
-  maker and when it was first heard. It notes which networks are yours (same name, or your mesh's hidden
-  links between its units), which share your channel, and setup networks like a Chromecast's.
+  maker and when it was first heard. Three colours: the network you're on, your other networks, everyone else's.
+  Tick **Mine** on a row to mark a network (all access points with that name) as yours, for example a guest
+  network from another box. A hidden network on the same device as one of yours counts as yours too. The
+  table also notes which networks share your channel, and setup networks like a Chromecast's.
 - **Events:** roams, outages, disconnects and sleep, newest first. Click one to see the 15 minutes around it.
 - **Tray icon:** green when fine; amber when 1% or more of the pings to the router are lost (or 3% to the
   internet); red at 10% or when Wi-Fi is down; grey when nothing is being recorded.
@@ -121,6 +123,7 @@ netcheck run [options]       measure, then print a report (Ctrl+C stops early)
 netcheck report [N|last]     report on run N (default: the last one)
 netcheck runs                list recorded runs
 netcheck scan                list the Wi-Fi networks around now: band, channel, signal, maker
+netcheck mine [add|remove N] networks that are yours besides the one you're on (by name, or BSSID if hidden)
 netcheck daemon [options]    measure continuously (what the systemd service runs)
 
 -d, --duration 4h            how long (s, m, h, d; 0 = until Ctrl+C). Default 2h
@@ -182,6 +185,13 @@ Makers come from the IEEE list in `/usr/share/hwdata/oui.txt` (package hwdata). 
 addresses for their other networks (a hidden backhaul, the 2.4 GHz side), which aren't in the list. Those get the
 maker of a network whose address differs only in the first and last byte.
 
+Your networks are kept in `~/.config/netcheck/settings.json`, shared by the app and the reports, apart from the
+measurements:
+
+```json
+{ "myNetworks": ["GuestNet"], "myBssids": [] }
+```
+
 ## The database
 
 The default is `~/.local/share/openrouter-client/netcheck.db`, one file for all runs. Times are Unix
@@ -231,12 +241,13 @@ that's the one the router sees too. The router's Traffic page shows it, and so d
 - `OpenRouter.Client.Core`: everything both programs use.
   - `Probes/`: one probe per measurement (`PingProbe`, `DnsProbe`, `HttpProbe`, `WifiProbe` with a pure `IwParser`,
     `WifiScanner` with a pure `ScanParser`, `NetworkState`), and `Vendors` (makers from the OUI list). The DNS wire
-    format is shared with the router app (`web/.../Probes/DnsMessage.cs`).
+    format is shared with the router app (`router/.../Probes/DnsMessage.cs`).
   - `NetMonitor`: runs the probes side by side, notes events, handles sleep, prints status, and batches samples to the store.
   - `Storage/`: `ResultStore` (the schema above, writing) and `HistoryReader` (the app's queries by time, in buckets).
   - `Reporting/`: statistics (`Stats`, `Outage`), the report and its hints (`RunReport`), and `Neighbourhood` (networks heard).
 - `OpenRouter.Client`: the `netcheck` command line (`Program.cs`).
-- `OpenRouter.Client.App`: the Avalonia app. `MainWindow` (status bar, charts with ScottPlot, networks, events),
+- `OpenRouter.Client.Core/Settings/ClientSettings`: which networks are yours.
+- `OpenRouter.Client.App`: the Avalonia app (`--screenshot file.png` renders the window to a file and quits, for checking layout). `MainWindow` (status bar, charts with ScottPlot, networks, events),
   `App` (tray icon), `ChartStyle` (the router pages' chart colours, light and dark).
 - `OpenRouter.Client.Tests`: tests for the parsers, statistics, hints, store and history queries (`dotnet test` in `client/`).
 - `install.sh`, `netcheck.service`: the install for one user.

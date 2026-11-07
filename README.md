@@ -3,7 +3,7 @@
 A web interface for a self-built Debian router, in the spirit of a consumer router's admin pages:
 clients, DHCP leases and reservations, IPv6, per-device traffic, DNS statistics and automatic health checks.
 
-It's an ASP.NET Core (.NET 10) Razor Pages app in [`web/`](web/), with a small TypeScript client
+It's an ASP.NET Core (.NET 10) Razor Pages app in [`router/`](router/), with a small TypeScript client
 (Vite, uPlot) for the charts. See [AGENTS.md](AGENTS.md) for how the router is set up and how the code
 is organised.
 
@@ -17,7 +17,7 @@ continuously with a desktop app that charts it. See [client/README.md](client/RE
 Needs the .NET 10 SDK and Node.js (for the chart client).
 
 ```sh
-cd web
+cd router
 dotnet build          # also builds the client into OpenRouter.Web/wwwroot/dist the first time
 dotnet test
 dotnet run --project OpenRouter.Web      # http://localhost:4000
@@ -26,12 +26,12 @@ dotnet run --project OpenRouter.Web      # http://localhost:4000
 While working on the TypeScript, keep a rebuild running next to the app:
 
 ```sh
-cd web/client
+cd router/client
 npm run dev           # vite build --watch → ../OpenRouter.Web/wwwroot/dist
 ```
 
-In Development the app reads made-up router data from `web/samples/` and fills the traffic history
-with made-up traffic. That needs `web/OpenRouter.Web/appsettings.Development.json` (not in git):
+In Development the app reads made-up router data from `router/samples/` and fills the traffic history
+with made-up traffic. That needs `router/OpenRouter.Web/appsettings.Development.json` (not in git):
 
 ```json
 {
@@ -245,7 +245,7 @@ Run this on the router from a checkout of the repo. It builds there, so the rout
 and Node.js:
 
 ```sh
-web/publish.sh
+router/publish.sh
 ```
 
 It builds the client and the app, replaces `/opt/openrouter-web` (owned by root, read-only for
@@ -253,11 +253,11 @@ everyone else), and restarts the `openrouter-web` service if it's installed.
 
 ### Running as a service
 
-[`web/openrouter-web.service`](web/openrouter-web.service) runs the app as the `openrouter` user,
+[`router/openrouter-web.service`](router/openrouter-web.service) runs the app as the `openrouter` user,
 listening on `http://192.168.1.1:4000`, restarting it if it crashes and starting it at boot. Install it once:
 
 ```sh
-sudo cp web/openrouter-web.service /etc/systemd/system/
+sudo cp router/openrouter-web.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now openrouter-web
 ```
@@ -277,7 +277,7 @@ Environment=ASPNETCORE_URLS=http://192.168.1.1:4000
 Day to day:
 
 ```sh
-web/publish.sh                            # new version: build, install, restart
+router/publish.sh                            # new version: build, install, restart
 systemctl status openrouter-web
 journalctl -u openrouter-web -f           # logs
 sudo systemctl restart openrouter-web
@@ -285,4 +285,4 @@ sudo systemctl restart openrouter-web
 
 The unit keeps some systemd hardening (read-only system directories, no access to home directories,
 private /tmp), but nothing that implies `NoNewPrivileges`: the app needs sudo for the one `nft` command.
-Stop the service before running the app by hand with `web/run.sh`, or they'll compete for the port.
+Stop the service before running the app by hand with `router/run.sh`, or they'll compete for the port.

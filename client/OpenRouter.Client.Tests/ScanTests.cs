@@ -1,5 +1,6 @@
 using OpenRouter.Client.Probes;
 using OpenRouter.Client.Reporting;
+using OpenRouter.Client.Settings;
 using OpenRouter.Client.Storage;
 
 namespace OpenRouter.Client.Tests;
@@ -102,6 +103,49 @@ public sealed class ScanTests
         };
         Assert.Contains(RunReport.Hints(data, new Dictionary<(string, string), IReadOnlyList<Outage>>()),
             h => h.StartsWith("2 other networks at −70 dBm or stronger share 5 GHz channel 36"));
+    }
+
+    [Fact]
+    public void Networks_marked_as_mine_and_their_hidden_links_are_told_apart()
+    {
+        var heard = Neighbourhood.Summarise([
+            new ScanSample(T0, "02:00:5e:10:00:01", "HomeNet", 5180, -55, true),
+            new ScanSample(T0, "06:00:5e:10:00:02", null, 5560, -58, false),   // the connected network's hidden backhaul
+            new ScanSample(T0, "00:1a:11:20:00:05", "Guest", 5180, -53, false),
+            new ScanSample(T0, "02:1a:11:20:00:06", null, 5180, -60, false),   // Guest's hidden link
+            new ScanSample(T0, "00:aa:bb:00:00:01", "Neighbour", 5180, -80, false),
+        ]);
+        var settings = new ClientSettings().With("Guest", "00:1a:11:20:00:05", true);
+
+        var owners = Neighbourhood.Classify(heard, "HomeNet", settings);
+
+        Assert.Equal(Ownership.Connected, owners["02:00:5e:10:00:01"]);
+        Assert.Equal(Ownership.Connected, owners["06:00:5e:10:00:02"]);
+        Assert.Equal(Ownership.Mine, owners["00:1a:11:20:00:05"]);
+        Assert.Equal(Ownership.Mine, owners["02:1a:11:20:00:06"]);
+        Assert.Equal(Ownership.Other, owners["00:aa:bb:00:00:01"]);
+        Assert.Equal(Ownership.Other, Neighbourhood.Classify(heard, "HomeNet", new())["00:1a:11:20:00:05"]);
+    }
+
+    [Fact]
+    public void Settings_round_trip_and_unmark()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"netcheck-settings-{Guid.NewGuid():N}", "settings.json");
+        try
+        {
+            Assert.Empty(ClientSettings.Load(path).MyNetworks); // no file yet
+
+            new ClientSettings().With("Guest", "", true).With(null, "AA:BB:CC:00:00:01", true).Save(path);
+            var loaded = ClientSettings.Load(path);
+            Assert.Equal(["Guest"], loaded.MyNetworks);
+            Assert.True(loaded.IsMine(null, "aa:bb:cc:00:00:01"));
+
+            Assert.Empty(loaded.With("Guest", "", false).MyNetworks);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(path)!, recursive: true);
+        }
     }
 
     [Fact]

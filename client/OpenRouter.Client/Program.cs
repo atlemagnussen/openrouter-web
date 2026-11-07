@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using OpenRouter.Client;
 using OpenRouter.Client.Probes;
 using OpenRouter.Client.Reporting;
+using OpenRouter.Client.Settings;
 using OpenRouter.Client.Storage;
 
 // netcheck: measures this machine's connection over time (ping, DNS, HTTPS, Wi-Fi) into SQLite. See README.md.
@@ -15,6 +16,7 @@ try
         "runs" => RunsAsync(args.Skip(1).ToList()),
         "daemon" => DaemonAsync(args.Skip(1).ToList()),
         "scan" => ScanAsync(args.Skip(1).ToList()),
+        "mine" => Task.FromResult(Mine(args.Skip(1).ToList())),
         null or "help" or "--help" or "-h" => Task.FromResult(Help()),
         var other => Task.FromResult(Fail($"Unknown command \"{other}\". Try: netcheck help")),
     });
@@ -48,7 +50,7 @@ static async Task<int> RunAsync(IReadOnlyList<string> args)
     await store.EndRunAsync(runId, time.GetUtcNow(), CancellationToken.None);
 
     Console.WriteLine();
-    Console.WriteLine(RunReport.Build((await store.GetRunAsync(runId, CancellationToken.None))!, TimeZoneInfo.Local, Vendors.Load()));
+    Console.WriteLine(RunReport.Build((await store.GetRunAsync(runId, CancellationToken.None))!, TimeZoneInfo.Local, Vendors.Load(), ClientSettings.Load(ClientSettings.DefaultPath)));
     return 0;
 }
 
@@ -105,10 +107,34 @@ static async Task<int> ScanAsync(IReadOnlyList<string> args)
     var vendors = Vendors.Load();
     var networks = await new WifiScanner(iface).ScanAsync(TimeProvider.System, CancellationToken.None);
     var makers = vendors.LookupAll(networks.Select(n => n.Bssid));
+    var heard = Neighbourhood.Summarise(networks);
+    var owners = Neighbourhood.Classify(heard, networks.FirstOrDefault(n => n.Associated)?.Ssid, ClientSettings.Load(ClientSettings.DefaultPath));
     Console.WriteLine($"{"band",-8} {"ch",3} {"signal",8}  {"network",-26} {"bssid",-17}  maker");
     foreach (var n in networks.OrderBy(n => n.FrequencyMhz).ThenByDescending(n => n.SignalDbm))
         Console.WriteLine($"{n.Band,-8} {n.Channel,3} {(n.SignalDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  {(n.Ssid ?? "(hidden)"),-26} {n.Bssid}  " +
-            $"{makers[n.Bssid]}{(n.Associated ? "  ← connected" : "")}");
+            $"{makers[n.Bssid]}{(n.Associated ? "  ← connected" : owners[n.Bssid] == Ownership.Mine ? "  (yours)" : "")}");
+    return 0;
+}
+
+// Which networks are yours: netcheck mine [add|remove NAME]. A BSSID (aa:bb:…) marks a single, hidden network.
+static int Mine(IReadOnlyList<string> args)
+{
+    var path = ClientSettings.DefaultPath;
+    var settings = ClientSettings.Load(path);
+    if (args.Count >= 2 && args[0] is "add" or "remove")
+    {
+        var name = string.Join(' ', args.Skip(1));
+        var isBssid = System.Text.RegularExpressions.Regex.IsMatch(name, "^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$");
+        settings = settings.With(isBssid ? null : name, isBssid ? name : "", args[0] == "add");
+        settings.Save(path);
+    }
+    else if (args.Count > 0)
+        return Fail("Usage: netcheck mine [add NAME | remove NAME]");
+
+    Console.WriteLine(settings.MyNetworks.Count + settings.MyBssids.Count == 0
+        ? "No networks marked as yours yet (the one you're connected to always counts). Add one with: netcheck mine add NAME"
+        : $"Your networks, besides the one you're connected to: {string.Join(", ", settings.MyNetworks.Concat(settings.MyBssids))}");
+    Console.WriteLine($"({path})");
     return 0;
 }
 
@@ -154,7 +180,7 @@ static async Task<int> ReportAsync(IReadOnlyList<string> args)
     var data = await store.GetRunAsync(runId, CancellationToken.None);
     if (data is null)
         return Fail($"No run {runId}. See: netcheck runs");
-    Console.WriteLine(RunReport.Build(data, TimeZoneInfo.Local, Vendors.Load()));
+    Console.WriteLine(RunReport.Build(data, TimeZoneInfo.Local, Vendors.Load(), ClientSettings.Load(ClientSettings.DefaultPath)));
     return 0;
 }
 
@@ -186,6 +212,7 @@ static int Help()
           netcheck report [N|last]     report on run N (default: the last one)
           netcheck runs                list recorded runs
           netcheck scan                list the Wi-Fi networks around now, with channel, signal and maker
+          netcheck mine [add|remove N] networks that are yours (shown as such in reports and the app)
           netcheck daemon [options]    measure continuously, one run per network (the systemd user service)
 
         Run options:

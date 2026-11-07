@@ -6,7 +6,7 @@ namespace OpenRouter.Client.Reporting;
 /// <summary>Turns a run's samples into a readable summary, with hints about where the problem is.</summary>
 public static class RunReport
 {
-    public static string Build(RunData data, TimeZoneInfo zone, Probes.Vendors? vendors = null)
+    public static string Build(RunData data, TimeZoneInfo zone, Probes.Vendors? vendors = null, Settings.ClientSettings? settings = null)
     {
         var run = data.Run;
         var report = new StringBuilder();
@@ -110,10 +110,11 @@ public static class RunReport
             var scans = data.Scans.Select(s => s.Time).Distinct().Count();
             var onChannel = heard.Where(n => n.Band == home.Band && n.Channel == home.Channel).ToList();
             var makers = vendors?.LookupAll(heard.Select(n => n.Bssid));
+            var owners = Neighbourhood.Classify(heard, HomeChannel(data)?.Ssid, settings ?? new());
             report.AppendLine($"Networks on {home.Band} channel {home.Channel} ({scans} scans, {heard.Count} networks heard in all)");
             foreach (var n in onChannel.Take(12))
                 report.AppendLine($"  {(n.Ssid ?? "(hidden)"),-24} {n.Bssid}  {(n.MedianDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  " +
-                    $"{makers?[n.Bssid] ?? ""}{(n.Associated ? "  (connected)" : "")}");
+                    $"{makers?[n.Bssid] ?? ""}{(n.Associated ? "  (connected)" : owners[n.Bssid] == Ownership.Mine ? "  (yours)" : "")}");
             report.AppendLine();
         }
 
@@ -129,7 +130,7 @@ public static class RunReport
             report.AppendLine();
         }
 
-        var hints = Hints(data, pingOutages);
+        var hints = Hints(data, pingOutages, settings);
         report.AppendLine("What it suggests");
         foreach (var hint in hints.DefaultIfEmpty("Nothing stands out: no notable loss, slow DNS or weak Wi-Fi in this run."))
             report.AppendLine($"  - {hint}");
@@ -143,7 +144,8 @@ public static class RunReport
             : null;
 
     /// <summary>Rules of thumb that point at where a problem sits: Wi-Fi, the router, DNS or the ISP.</summary>
-    public static IReadOnlyList<string> Hints(RunData data, IReadOnlyDictionary<(string Label, string Target), IReadOnlyList<Outage>> outages)
+    public static IReadOnlyList<string> Hints(RunData data, IReadOnlyDictionary<(string Label, string Target), IReadOnlyList<Outage>> outages,
+        Settings.ClientSettings? settings = null)
     {
         var hints = new List<string>();
         Stats? Ping(string label) =>
@@ -206,11 +208,17 @@ public static class RunReport
         // Other loud networks on the same channel take turns with yours for airtime.
         if (data.Scans.Count > 0 && HomeChannel(data) is { } home)
         {
-            var others = Neighbourhood.SharingChannel(Neighbourhood.Summarise(data.Scans), home.FrequencyMhz, home.Ssid);
+            var heard = Neighbourhood.Summarise(data.Scans);
+            var owners = Neighbourhood.Classify(heard, home.Ssid, settings ?? new());
+            var others = Neighbourhood.SharingChannel(heard, home.FrequencyMhz, home.Ssid);
+            var mine = others.Where(n => owners[n.Bssid] == Ownership.Mine).ToList();
             if (others.Count > 0)
                 hints.Add($"{others.Count} other network{(others.Count == 1 ? "" : "s")} at −70 dBm or stronger share {home.Band} channel {home.Channel} " +
-                    $"({string.Join(", ", others.Take(5).Select(n => $"{n.Ssid ?? "hidden"} {n.MedianDbm} dBm"))}). They take turns with yours " +
-                    "for airtime; if one of them is yours, move it to another channel.");
+                    $"({string.Join(", ", others.Take(5).Select(n => $"{n.Ssid ?? "hidden"}{(owners[n.Bssid] == Ownership.Mine ? " (yours)" : "")} {n.MedianDbm} dBm"))}). " +
+                    "They take turns with yours for airtime; " +
+                    (mine.Count > 0 ? $"{string.Join(" and ", mine.Select(n => n.Ssid ?? "a hidden one").Distinct())} " +
+                        $"{(mine.Select(n => n.Ssid).Distinct().Count() > 1 ? "are" : "is")} yours, so move it (or this network) to another channel."
+                        : "if one of them is yours, move it to another channel."));
         }
 
         // Outages that start just after a roam point at roaming. One that starts before the roam is the laptop
