@@ -6,7 +6,17 @@ public sealed record HeardNetwork(
     DateTimeOffset FirstSeen, DateTimeOffset LastSeen, bool Associated)
 {
     public string Band => WifiBand.Name(FrequencyMhz)!;
+
+    /// <summary>The main channel.</summary>
     public int Channel => WifiBand.Channel(FrequencyMhz)!.Value;
+
+    public int? WidthMhz { get; init; }
+    public double? CenterMhz { get; init; }
+
+    /// <summary>All the channels it covers: "36–48 (80 MHz)".</summary>
+    public string Channels => WifiBand.Channels(FrequencyMhz, WidthMhz, CenterMhz);
+
+    public (double Low, double High) Occupied => WifiBand.Occupied(FrequencyMhz, WidthMhz, CenterMhz);
 }
 
 /// <summary>Whose a network is: the one you're connected to (all its access points), another of yours, or someone else's.</summary>
@@ -22,9 +32,15 @@ public static class Neighbourhood
             {
                 var signals = g.Where(s => s.SignalDbm is not null).Select(s => s.SignalDbm!.Value).Order().ToList();
                 var last = g.MaxBy(s => s.Time)!;
+                // The width as last heard: a network can narrow or widen, and the latest is what it does now.
+                var sized = g.Where(s => s.WidthMhz is not null).MaxBy(s => s.Time);
                 return new HeardNetwork(g.Key, g.Select(s => s.Ssid).LastOrDefault(s => s is not null), last.FrequencyMhz,
                     signals.Count > 0 ? signals[signals.Count / 2] : null, signals.Count > 0 ? signals[^1] : null,
-                    g.Select(s => s.Time).Distinct().Count(), g.Min(s => s.Time), last.Time, g.Any(s => s.Associated));
+                    g.Select(s => s.Time).Distinct().Count(), g.Min(s => s.Time), last.Time, g.Any(s => s.Associated))
+                {
+                    WidthMhz = sized?.FrequencyMhz == last.FrequencyMhz ? sized.WidthMhz : null,
+                    CenterMhz = sized?.FrequencyMhz == last.FrequencyMhz ? sized.CenterMhz : null,
+                };
             })
             .OrderByDescending(n => n.MedianDbm ?? -200)
             .ToList();
@@ -55,17 +71,25 @@ public static class Neighbourhood
     public static bool SameDevice(string a, string b) => a.Length == 17 && b.Length == 17 && a != b && a[3..14] == b[3..14];
 
     /// <summary>
-    /// Other networks that share the channel of <paramref name="frequencyMhz"/> and are loud enough to matter: on
-    /// 2.4 GHz channels less than 5 apart overlap. Your own network's other access points (same name) are left out,
-    /// but hidden networks are kept, since mesh systems use them for their own backhaul.
+    /// Other networks that send on some of the same spectrum as the one you're on at <paramref name="frequencyMhz"/>, and
+    /// are loud enough to matter. Wide networks count with all their channels: an 80 MHz network on 36 also covers 40,
+    /// 44 and 48. Your own network's other access points (same name) are left out; hidden networks are kept, since
+    /// mesh systems use them for their own backhaul.
     /// </summary>
-    public static IReadOnlyList<HeardNetwork> SharingChannel(IEnumerable<HeardNetwork> networks, double frequencyMhz, string? ownSsid, int loudDbm = -70)
+    public static IReadOnlyList<HeardNetwork> SharingChannel(IReadOnlyList<HeardNetwork> networks, double frequencyMhz, string? ownSsid, int loudDbm = -70)
     {
-        var channel = WifiBand.Channel(frequencyMhz)!.Value;
-        var band = WifiBand.Name(frequencyMhz);
+        var home = HomeSpectrum(networks, frequencyMhz);
         return networks
-            .Where(n => n.Band == band && (band == "2.4 GHz" ? Math.Abs(n.Channel - channel) < 5 : n.Channel == channel))
+            .Where(n => WifiBand.Overlap(n.Occupied, home))
             .Where(n => n.MedianDbm >= loudDbm && !n.Associated && (n.Ssid is null || n.Ssid != ownSsid))
             .ToList();
     }
+
+    /// <summary>The spectrum of the network you're connected to on that frequency (20 MHz around it when its width isn't known).</summary>
+    public static (double Low, double High) HomeSpectrum(IReadOnlyList<HeardNetwork> networks, double frequencyMhz) =>
+        networks.FirstOrDefault(n => n.Associated && n.FrequencyMhz == frequencyMhz)?.Occupied ?? WifiBand.Occupied(frequencyMhz, null, null);
+
+    /// <summary>"36–48 (80 MHz)" for the network you're connected to, or just the channel.</summary>
+    public static string HomeChannels(IReadOnlyList<HeardNetwork> networks, double frequencyMhz) =>
+        networks.FirstOrDefault(n => n.Associated && n.FrequencyMhz == frequencyMhz)?.Channels ?? WifiBand.Channel(frequencyMhz).ToString()!;
 }

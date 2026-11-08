@@ -109,9 +109,9 @@ static async Task<int> ScanAsync(IReadOnlyList<string> args)
     var makers = vendors.LookupAll(networks.Select(n => n.Bssid));
     var heard = Neighbourhood.Summarise(networks);
     var owners = Neighbourhood.Classify(heard, networks.FirstOrDefault(n => n.Associated)?.Ssid, ClientSettings.Load(ClientSettings.DefaultPath));
-    Console.WriteLine($"{"band",-8} {"ch",3} {"signal",8}  {"network",-26} {"bssid",-17}  maker");
+    Console.WriteLine($"{"band",-8} {"channels",-16} {"signal",8}  {"network",-26} {"bssid",-17}  maker");
     foreach (var n in networks.OrderBy(n => n.FrequencyMhz).ThenByDescending(n => n.SignalDbm))
-        Console.WriteLine($"{n.Band,-8} {n.Channel,3} {(n.SignalDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  {(n.Ssid ?? "(hidden)"),-26} {n.Bssid}  " +
+        Console.WriteLine($"{n.Band,-8} {WifiBand.Channels(n.FrequencyMhz, n.WidthMhz, n.CenterMhz),-16} {(n.SignalDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  {(n.Ssid ?? "(hidden)"),-26} {n.Bssid}  " +
             $"{makers[n.Bssid]}{(n.Associated ? "  ← connected" : owners[n.Bssid] == Ownership.Mine ? "  (yours)" : "")}");
     return 0;
 }

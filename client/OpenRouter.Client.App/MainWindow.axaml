@@ -91,20 +91,22 @@
             <TextBlock Classes="muted" Margin="0,10,0,0" Text="Your other networks" />
             <Border Classes="swatch" x:Name="OthersSwatch" Margin="10,10,4,0" />
             <TextBlock Classes="muted" Margin="0,10,0,0" Text="Other networks" />
+            <TextBlock Classes="muted" Margin="16,10,0,0" Text="· bar: every channel it sends on, dot: its main channel" />
           </StackPanel>
-          <TextBlock Grid.Row="1" Classes="muted" x:Name="ScanText" TextWrapping="Wrap" />
+          <TextBlock Grid.Row="1" Classes="muted" x:Name="ScanText" TextWrapping="Wrap"
+                     ToolTip.Tip="Bars: all the channels a network sends on. Dots: its main channel. Overlapping bars take turns on the air." />
           <Grid Grid.Row="2" ColumnDefinitions="*,2*">
             <sp:AvaPlot x:Name="Band24Plot" />
             <sp:AvaPlot Grid.Column="1" x:Name="Band5Plot" />
           </Grid>
           <TextBlock Grid.Row="3" x:Name="NetworkHoverText" Classes="muted" Margin="0,4" Text="Point at a dot to see which network it is." />
           <DockPanel Grid.Row="4">
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="52,200,140,170,56,90,90,70,150,*" Margin="12,6,12,4">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="52,200,140,170,130,90,90,70,150,*" Margin="12,6,12,4">
               <TextBlock Classes="muted" Text="Mine" />
               <TextBlock Grid.Column="1" Classes="muted" Text="Network" />
               <TextBlock Grid.Column="2" Classes="muted" Text="BSSID" />
               <TextBlock Grid.Column="3" Classes="muted" Text="Maker" />
-              <TextBlock Grid.Column="4" Classes="muted" Text="Ch" />
+              <TextBlock Grid.Column="4" Classes="muted" Text="Channels" />
               <TextBlock Grid.Column="5" Classes="muted" Text="Typical" />
               <TextBlock Grid.Column="6" Classes="muted" Text="Strongest" />
               <TextBlock Grid.Column="7" Classes="muted" Text="Scans" />
@@ -118,7 +120,7 @@
               </ListBox.Styles>
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="local:NetworkRow">
-                  <Grid ColumnDefinitions="52,200,140,170,56,90,90,70,150,*">
+                  <Grid ColumnDefinitions="52,200,140,170,130,90,90,70,150,*">
                     <CheckBox IsChecked="{Binding Mine, Mode=OneWay}" IsEnabled="{Binding CanMark}" Click="MineClicked"
                               ToolTip.Tip="This network is mine" VerticalAlignment="Center" MinWidth="0" MinHeight="0" Height="22" Padding="0" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">

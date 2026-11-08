@@ -106,9 +106,14 @@ public sealed class HistoryReader : IAsyncDisposable
     {
         var scans = new List<ScanSample>();
         await foreach (var r in QueryAsync("""
-            SELECT time_ms, bssid, ssid, freq_mhz, signal_dbm, associated FROM scans WHERE time_ms >= $from AND time_ms < $to ORDER BY time_ms;
+            SELECT time_ms, bssid, ssid, freq_mhz, signal_dbm, associated, width_mhz, center_mhz
+            FROM scans WHERE time_ms >= $from AND time_ms < $to ORDER BY time_ms;
             """, cancellationToken, ("$from", from.ToUnixTimeMilliseconds()), ("$to", to.ToUnixTimeMilliseconds())))
-            scans.Add(new ScanSample(Time(r, 0), r.GetString(1), Text(r, 2), r.GetDouble(3), Int(r, 4), r.GetInt64(5) == 1));
+            scans.Add(new ScanSample(Time(r, 0), r.GetString(1), Text(r, 2), r.GetDouble(3), Int(r, 4), r.GetInt64(5) == 1)
+            {
+                WidthMhz = Int(r, 6),
+                CenterMhz = r.IsDBNull(7) ? null : r.GetDouble(7),
+            });
         return scans;
     }
 

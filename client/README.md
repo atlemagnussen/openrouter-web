@@ -65,10 +65,12 @@ tray menu or with Ctrl+Q. It shows:
 - **Connection:** charts for signal (with roams marked), link rate, round trip, and lost pings, over 15 minutes up
   to 7 days. Point at a chart for that moment's numbers. Gaps are times nothing was measured (asleep, collector off).
 - **Networks:** every network heard in the range's scans, as dots by channel and signal, and as a table with the
-  maker and when it was first heard. Three colours: the network you're on, your other networks, everyone else's.
+  maker and when it was first heard. Each network is a bar across every channel it sends on, with a dot on its
+  main channel: an 80 MHz network "on 36" really uses 36–48, and the table shows it as "36–48 (80 MHz)".
+  Overlapping bars take turns on the air. Three colours: the network you're on, your other networks, everyone else's.
   Tick **Mine** on a row to mark a network (all access points with that name) as yours, for example a guest
   network from another box. A hidden network on the same device as one of yours counts as yours too. The
-  table also notes which networks share your channel, and setup networks like a Chromecast's.
+  table also notes which networks overlap your channels, and setup networks like a Chromecast's.
 - **Events:** roams, outages, disconnects and sleep, newest first. Click one to see the 15 minutes around it.
 - **Tray icon:** green when fine; amber when 1% or more of the pings to the router are lost (or 3% to the
   internet); red at 10% or when Wi-Fi is down; grey when nothing is being recorded.
@@ -171,9 +173,9 @@ What it suggests
   - mostly 2.4 GHz means a slower, more crowded band;
   - the router's DNS failing while 1.1.1.1 answers points at bind;
   - the link rate falling to the lowest rates while the signal is good points at interference or a busy channel;
-  - other loud networks on your channel (from the scans) take airtime from yours.
+  - other loud networks overlapping your channels (from the scans, counting their full width) take airtime from yours.
 
-The report also lists the networks heard on the channel the laptop used most.
+The report also lists the networks overlapping the channels the laptop used most.
 
 ### Scanning without root
 
@@ -205,7 +207,7 @@ The default is `~/.local/share/openrouter-client/netcheck.db`, one file for all 
 | `http` | request: url, `dns_ms`, `connect_ms`, `tls_ms`, `first_byte_ms`, status, error |
 | `wifi` | reading: SSID, BSSID, `freq_mhz`, `signal_dbm`, `signal_avg_dbm`, bitrates, `tx_packets`, `tx_failed`, `tx_retries`, `beacon_loss` (counters restart at each association; null when the driver doesn't report them) |
 | `events` | event: kind, detail |
-| `scans` | network heard in a scan: bssid, ssid (null = hidden), `freq_mhz`, `signal_dbm`, `associated`; one scan = rows with the same `time_ms` |
+| `scans` | network heard in a scan: bssid, ssid (null = hidden), `freq_mhz` (its main channel), `signal_dbm`, `associated`, `width_mhz` and `center_mhz` (all the channels it covers; null in scans from before this was recorded); one scan = rows with the same `time_ms` |
 
 The database stays on the laptop. It holds your own addresses and access point names, so don't commit it
 to this public repository (`.gitignore` excludes `*.db`).

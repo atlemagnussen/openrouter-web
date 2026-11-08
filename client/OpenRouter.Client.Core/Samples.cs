@@ -44,11 +44,44 @@ public sealed record ScanSample(DateTimeOffset Time, string Bssid, string? Ssid,
 {
     public string Band => WifiBand.Name(FrequencyMhz)!;
     public int Channel => WifiBand.Channel(FrequencyMhz)!.Value;
+
+    /// <summary>How wide the network sends (20, 40, 80, 160 MHz); null when the scan didn't say (counted as 20).</summary>
+    public int? WidthMhz { get; init; }
+
+    /// <summary>The middle of all the channels it uses; differs from <see cref="FrequencyMhz"/> (its main channel) when wider than 20 MHz.</summary>
+    public double? CenterMhz { get; init; }
 }
 
 /// <summary>Band and channel from a Wi-Fi frequency.</summary>
 public static class WifiBand
 {
+    /// <summary>
+    /// The 20 MHz channels a network covers, as text: "6", "36–48 (80 MHz)". On 2.4 GHz a 40 MHz network uses
+    /// its main channel and one 4 away ("1+5").
+    /// </summary>
+    public static string Channels(double frequencyMhz, int? widthMhz, double? centerMhz)
+    {
+        var main = Channel(frequencyMhz)!.Value;
+        if (widthMhz is not { } width || width <= 20 || centerMhz is not { } center)
+            return main.ToString();
+        if (frequencyMhz < 3000)
+            return $"{Math.Min(main, Channel(2 * center - frequencyMhz)!.Value)}+{Math.Max(main, Channel(2 * center - frequencyMhz)!.Value)} ({width} MHz)";
+        var low = Channel(center - width / 2.0 + 10)!.Value;
+        var high = Channel(center + width / 2.0 - 10)!.Value;
+        return $"{low}–{high} ({width} MHz)";
+    }
+
+    /// <summary>The radio spectrum a network occupies, in MHz.</summary>
+    public static (double Low, double High) Occupied(double frequencyMhz, int? widthMhz, double? centerMhz)
+    {
+        var width = widthMhz ?? 20;
+        var center = width > 20 && centerMhz is { } c ? c : frequencyMhz;
+        return (center - width / 2.0, center + width / 2.0);
+    }
+
+    /// <summary>True when two networks send on some of the same spectrum (and so take turns, or collide).</summary>
+    public static bool Overlap((double Low, double High) a, (double Low, double High) b) => a.Low < b.High && b.Low < a.High;
+
     public static string? Name(double? frequencyMhz) => frequencyMhz switch
     {
         null => null,

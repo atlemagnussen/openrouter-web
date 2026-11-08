@@ -417,7 +417,8 @@ public sealed partial class MainWindow : Window
         var connected = heard.FirstOrDefault(n => n.Bssid == wifi?.Bssid) ?? heard.FirstOrDefault(n => n.Associated);
         var ownSsid = wifi?.Ssid ?? connected?.Ssid;
         var owners = Neighbourhood.Classify(heard, ownSsid, _settings);
-        var home = wifi is { Connected: true, FrequencyMhz: { } freq } ? (Band: WifiBand.Name(freq), Channel: WifiBand.Channel(freq)) : default;
+        var homeSpectrum = wifi is { Connected: true, FrequencyMhz: { } freq } ? Neighbourhood.HomeSpectrum(heard, freq) : ((double, double)?)null;
+        var homeChannels = wifi is { Connected: true, FrequencyMhz: { } freq2 } ? Neighbourhood.HomeChannels(heard, freq2) : "";
 
         var scanCount = scans.Select(s => s.Time).Distinct().Count();
         var sharing = wifi is { Connected: true, FrequencyMhz: { } f } ? Neighbourhood.SharingChannel(heard, f, ownSsid) : [];
@@ -426,7 +427,7 @@ public sealed partial class MainWindow : Window
             ? "No scans in this range yet. The collector scans every 2 minutes while connected to Wi-Fi."
             : $"{heard.Count} networks in {scanCount} scans, last at {Local(scans[^1].Time):HH:mm:ss}. Signal is the median over the scans." +
               (sharing.Count > 0
-                  ? $" {sharing.Count} other network{(sharing.Count == 1 ? "" : "s")} at −70 dBm or stronger share your channel ({home.Channel}): " +
+                  ? $" {sharing.Count} other network{(sharing.Count == 1 ? "" : "s")} at −70 dBm or stronger overlap your channels ({homeChannels}): " +
                     string.Join(", ", sharing.Select(Named).Distinct()) + "."
                   : "") +
               " Tick \"Mine\" on your other networks to tell them apart.";
@@ -447,14 +448,14 @@ public sealed partial class MainWindow : Window
                     notes.Add(n.Ssid is null ? "your network (hidden backhaul)" : "your network");
                 else if (owner == Ownership.Mine)
                     notes.Add(n.Ssid is null ? "yours (hidden backhaul)" : "yours");
-                if (owner != Ownership.Connected && n.Band == home.Band && n.Channel == home.Channel)
-                    notes.Add("shares your channel");
+                if (owner != Ownership.Connected && homeSpectrum is { } spectrum && WifiBand.Overlap(n.Occupied, spectrum))
+                    notes.Add("overlaps your channels");
                 if (firstHeard.TryGetValue(n.Bssid, out var first) && now - first < TimeSpan.FromDays(1) && first > firstHeard.Values.Min() + TimeSpan.FromHours(1))
                     notes.Add("new today");
                 if (n.Ssid?.EndsWith(".b") == true || n.Ssid?.StartsWith("DIRECT-") == true)
                     notes.Add(n.Ssid.StartsWith("DIRECT-") ? "Wi-Fi Direct (printer, TV, …)" : "setup network (Chromecast / Google device)");
                 return new NetworkRow(
-                    n.Ssid ?? "(hidden)", n.Bssid, makers[n.Bssid] ?? "", n.Channel.ToString(), Dbm(n.MedianDbm), Dbm(n.StrongestDbm),
+                    n.Ssid ?? "(hidden)", n.Bssid, makers[n.Bssid] ?? "", n.Channels, Dbm(n.MedianDbm), Dbm(n.StrongestDbm),
                     n.TimesHeard.ToString(), firstHeard.TryGetValue(n.Bssid, out var f2) ? When(f2, now) : "",
                     string.Join(" · ", notes), n.Bssid == connected?.Bssid ? FontWeight.SemiBold : FontWeight.Normal)
                 {
@@ -499,17 +500,25 @@ public sealed partial class MainWindow : Window
         _style.Reset(control);
         var plot = control.Plot;
         var networks = heard.Where(n => n.Band == band && n.MedianDbm is not null).ToList();
-        // Others first, then yours, then the connected network: your own dots end up on top.
+        // Channel numbers are 5 MHz apart, so the x axis is frequency in channel steps: a bar spans the spectrum a network uses.
+        var baseMhz = band == "2.4 GHz" ? 2407.0 : 5000.0;
+        double Step(double mhz) => (mhz - baseMhz) / 5;
+        // Others first, then yours, then the connected network: your own ones end up on top.
         foreach (var n in networks.OrderByDescending(n => owners[n.Bssid]))
         {
             var color = ColorOf(owners[n.Bssid]);
             var isConnected = n.Bssid == connected?.Bssid;
+            var (low, high) = n.Occupied;
+            var bar = plot.Add.Line(Step(low) + 0.15, n.MedianDbm!.Value, Step(high) - 0.15, n.MedianDbm.Value);
+            bar.LineWidth = isConnected ? 4 : 3;
+            bar.LineColor = color.WithAlpha(0.55);
+            bar.MarkerSize = 0;
             plot.Add.Marker(n.Channel, n.MedianDbm!.Value, MarkerShape.FilledCircle, isConnected ? 13 : 9, color);
             if (isConnected)
                 plot.Add.Marker(n.Channel, n.MedianDbm.Value, MarkerShape.OpenCircle, 20, color).MarkerStyle.LineWidth = 2; // the network you're on
             var whose = owners[n.Bssid] switch { Ownership.Connected => " · your network", Ownership.Mine => " · yours", _ => "" };
             _dots.Add((control, n.Channel, n.MedianDbm.Value,
-                $"{n.Ssid ?? "(hidden)"} · {n.Bssid} · {makers[n.Bssid] ?? "unknown maker"} · {band} ch {n.Channel} · " +
+                $"{n.Ssid ?? "(hidden)"} · {n.Bssid} · {makers[n.Bssid] ?? "unknown maker"} · {band} channels {n.Channels} · " +
                 $"{n.MedianDbm} dBm typical, {n.StrongestDbm} dBm strongest · heard in {n.TimesHeard} scans" + (isConnected ? " · connected" : whose)));
         }
         // Names only on the loud ones, one per channel and owner (so your own networks always get theirs).

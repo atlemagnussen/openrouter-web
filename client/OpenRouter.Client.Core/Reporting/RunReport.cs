@@ -103,17 +103,19 @@ public static class RunReport
             report.AppendLine();
         }
 
-        // Networks around: what shares the channel this machine used most.
+        // Networks around: what overlaps the channels this machine used most.
         if (data.Scans.Count > 0 && HomeChannel(data) is { } home)
         {
             var heard = Neighbourhood.Summarise(data.Scans);
             var scans = data.Scans.Select(s => s.Time).Distinct().Count();
-            var onChannel = heard.Where(n => n.Band == home.Band && n.Channel == home.Channel).ToList();
+            var spectrum = Neighbourhood.HomeSpectrum(heard, home.FrequencyMhz);
+            var onChannel = heard.Where(n => WifiBand.Overlap(n.Occupied, spectrum)).ToList();
             var makers = vendors?.LookupAll(heard.Select(n => n.Bssid));
             var owners = Neighbourhood.Classify(heard, HomeChannel(data)?.Ssid, settings ?? new());
-            report.AppendLine($"Networks on {home.Band} channel {home.Channel} ({scans} scans, {heard.Count} networks heard in all)");
+            report.AppendLine($"Networks overlapping {home.Band} channels {Neighbourhood.HomeChannels(heard, home.FrequencyMhz)} " +
+                $"({scans} scans, {heard.Count} networks heard in all)");
             foreach (var n in onChannel.Take(12))
-                report.AppendLine($"  {(n.Ssid ?? "(hidden)"),-24} {n.Bssid}  {(n.MedianDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  " +
+                report.AppendLine($"  {(n.Ssid ?? "(hidden)"),-24} {n.Bssid}  {n.Channels,-16} {(n.MedianDbm is { } dbm ? $"{dbm} dBm" : "—"),8}  " +
                     $"{makers?[n.Bssid] ?? ""}{(n.Associated ? "  (connected)" : owners[n.Bssid] == Ownership.Mine ? "  (yours)" : "")}");
             report.AppendLine();
         }
@@ -213,7 +215,8 @@ public static class RunReport
             var others = Neighbourhood.SharingChannel(heard, home.FrequencyMhz, home.Ssid);
             var mine = others.Where(n => owners[n.Bssid] == Ownership.Mine).ToList();
             if (others.Count > 0)
-                hints.Add($"{others.Count} other network{(others.Count == 1 ? "" : "s")} at −70 dBm or stronger share {home.Band} channel {home.Channel} " +
+                hints.Add($"{others.Count} other network{(others.Count == 1 ? "" : "s")} at −70 dBm or stronger overlap your {home.Band} " +
+                    $"channels {Neighbourhood.HomeChannels(heard, home.FrequencyMhz)} " +
                     $"({string.Join(", ", others.Take(5).Select(n => $"{n.Ssid ?? "hidden"}{(owners[n.Bssid] == Ownership.Mine ? " (yours)" : "")} {n.MedianDbm} dBm"))}). " +
                     "They take turns with yours for airtime; " +
                     (mine.Count > 0 ? $"{string.Join(" and ", mine.Select(n => n.Ssid ?? "a hidden one").Distinct())} " +

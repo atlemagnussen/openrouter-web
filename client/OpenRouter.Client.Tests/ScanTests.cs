@@ -21,6 +21,16 @@ public sealed class ScanTests
         	HT capabilities:
         		Capabilities: 0x9ef
         			SM Power Save disabled
+        	HT operation:
+        		 * primary channel: 36
+        		 * secondary channel offset: above
+        		 * STA channel width: any
+        	Overlapping BSS scan params:
+        		 * channel width trigger scan interval: 300 s
+        	VHT operation:
+        		 * channel width: 1 (80 MHz)
+        		 * center freq segment 1: 42
+        		 * center freq segment 2: 0
         BSS 06:00:5e:10:00:02(on wlan0)
         	freq: 5180.0
         	signal: -64.00 dBm
@@ -31,6 +41,10 @@ public sealed class ScanTests
         	signal: -81.00 dBm
         	last seen: 3000 ms ago
         	SSID: Caf\xc3\xa9
+        	HT operation:
+        		 * primary channel: 1
+        		 * secondary channel offset: above
+        		 * STA channel width: any
         BSS 00:1a:11:20:00:04(on wlan0)
         	freq: 2437.0
         	signal: -90.00 dBm
@@ -49,6 +63,34 @@ public sealed class ScanTests
         Assert.Null(networks[1].Ssid); // hidden: zero bytes
         Assert.False(networks[1].Associated);
         Assert.Equal(("Café", 1, "2.4 GHz"), (networks[2].Ssid, networks[2].Channel, networks[2].Band));
+
+        // Widths: 80 MHz from VHT, 40 MHz from HT, unknown when neither block is there.
+        Assert.Equal((80, 5210.0), (home.WidthMhz, home.CenterMhz));
+        Assert.Equal("36–48 (80 MHz)", WifiBand.Channels(home.FrequencyMhz, home.WidthMhz, home.CenterMhz));
+        Assert.Equal((40, 2422.0), (networks[2].WidthMhz, networks[2].CenterMhz));
+        Assert.Equal("1+5 (40 MHz)", WifiBand.Channels(networks[2].FrequencyMhz, networks[2].WidthMhz, networks[2].CenterMhz));
+        Assert.Null(networks[1].WidthMhz);
+        Assert.Equal("36", WifiBand.Channels(networks[1].FrequencyMhz, null, null));
+    }
+
+    [Fact]
+    public void Wide_networks_overlap_on_every_channel_they_cover()
+    {
+        HeardNetwork N(string bssid, string ssid, double freq, int? width, double? center, bool associated = false) =>
+            new(bssid, ssid, freq, -55, -55, 1, T0, T0, associated) { WidthMhz = width, CenterMhz = center };
+        var heard = new[]
+        {
+            N("02:00:5e:10:00:01", "HomeNet", 5180, 80, 5210, associated: true),  // 36–48
+            N("00:1a:11:20:00:05", "Guest", 5240, 20, 5240),                      // 48: inside the 80 MHz
+            N("00:1a:11:20:00:06", "Next", 5260, 80, 5290),                       // 52–64: just beside it
+            N("00:1a:11:20:00:07", "TwoFour1", 2412, 20, 2412),                   // 2.4 GHz channel 1 …
+            N("00:1a:11:20:00:08", "TwoFour4", 2427, 20, 2427),                   // … and 4 overlap
+            N("00:1a:11:20:00:09", "TwoFour6", 2437, 20, 2437),                   // 1 and 6 don't
+        };
+
+        Assert.Equal(["Guest"], Neighbourhood.SharingChannel(heard, 5180, "HomeNet").Select(n => n.Ssid));
+        Assert.True(WifiBand.Overlap(heard[3].Occupied, heard[4].Occupied));
+        Assert.False(WifiBand.Overlap(heard[3].Occupied, heard[5].Occupied));
     }
 
     [Fact]
@@ -102,7 +144,7 @@ public sealed class ScanTests
             Scans = scans,
         };
         Assert.Contains(RunReport.Hints(data, new Dictionary<(string, string), IReadOnlyList<Outage>>()),
-            h => h.StartsWith("2 other networks at −70 dBm or stronger share 5 GHz channel 36"));
+            h => h.StartsWith("2 other networks at −70 dBm or stronger overlap your 5 GHz channels 36 "));
     }
 
     [Fact]

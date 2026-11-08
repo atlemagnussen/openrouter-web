@@ -23,10 +23,62 @@ public static partial class ScanParser
             int? signal = Field(body, "signal") is { } s && double.TryParse(LeadingNumber().Match(s).Value, CultureInfo.InvariantCulture, out var dbm)
                 ? (int)Math.Round(dbm)
                 : null;
+            var (width, center) = Width(body, freq);
             results.Add(new ScanSample(at, block.Groups["bssid"].Value.ToLowerInvariant(), Ssid(Field(body, "SSID")), freq, signal,
-                block.Groups["rest"].Value.Contains("associated")));
+                block.Groups["rest"].Value.Contains("associated"))
+            {
+                WidthMhz = width,
+                CenterMhz = center,
+            });
         }
         return results;
+    }
+
+    /// <summary>
+    /// The channel width from the "VHT operation" block (80/160 MHz, 5 GHz), else the "HT operation" block
+    /// (40 MHz when there's a secondary channel and the width is "any"), else 20 MHz.
+    /// </summary>
+    private static (int? Width, double? Center) Width(string body, double frequencyMhz)
+    {
+        var vht = Section(body, "VHT operation");
+        if (vht is not null && Field(vht, "* channel width", nested: true) is { } vhtWidth &&
+            int.TryParse(Field(vht, "* center freq segment 1", nested: true), out var segment1) && segment1 > 0)
+        {
+            int.TryParse(Field(vht, "* center freq segment 2", nested: true), out var segment2);
+            static double Mhz(int channel) => 5000 + 5 * channel;
+            switch (vhtWidth[0])
+            {
+                case '1' when segment2 > 0 && Math.Abs(segment2 - segment1) == 8:
+                    return (160, Mhz(segment2)); // 160 MHz, signalled the newer way
+                case '1':
+                    return (80, Mhz(segment1));  // 80 MHz (or 80+80, counted as its first 80)
+                case '2':
+                    return (160, Mhz(segment1));
+                case '3':
+                    return (80, Mhz(segment1));
+            }
+        }
+        var ht = Section(body, "HT operation");
+        if (ht is null)
+            return (null, null);
+        var offset = Field(ht, "* secondary channel offset", nested: true);
+        var any = Field(ht, "* STA channel width", nested: true) == "any";
+        return offset switch
+        {
+            "above" when any => (40, frequencyMhz + 10),
+            "below" when any => (40, frequencyMhz - 10),
+            _ => (20, frequencyMhz),
+        };
+    }
+
+    /// <summary>The indented lines under a top-level "Name:" line of a block.</summary>
+    private static string? Section(string body, string name)
+    {
+        var lines = body.Split('\n');
+        var start = Array.FindIndex(lines, l => l.TrimEnd() == $"\t{name}:");
+        if (start < 0)
+            return null;
+        return string.Join('\n', lines.Skip(start + 1).TakeWhile(l => l.StartsWith("\t\t")));
     }
 
     /// <summary>A hidden network sends an empty name, or one made of zero bytes (which iw prints as \x00).</summary>
@@ -52,12 +104,12 @@ public static partial class ScanParser
         return System.Text.Encoding.UTF8.GetString([.. bytes]);
     }
 
-    /// <summary>The first "name: value" line at the top level of a block (one tab deep).</summary>
-    private static string? Field(string body, string name)
+    /// <summary>The first "name: value" line at the top level of a block (one tab deep), or at any depth when nested.</summary>
+    private static string? Field(string body, string name, bool nested = false)
     {
         foreach (var line in body.Split('\n'))
         {
-            if (!line.StartsWith('\t') || line.StartsWith("\t\t"))
+            if (!nested && (!line.StartsWith('\t') || line.StartsWith("\t\t")))
                 continue;
             var trimmed = line.Trim();
             if (trimmed.StartsWith(name + ":", StringComparison.Ordinal))

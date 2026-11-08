@@ -88,7 +88,9 @@ public sealed class ResultStore(string path) : IAsyncDisposable
             ssid TEXT,                  -- null: hidden network
             freq_mhz REAL NOT NULL,
             signal_dbm INTEGER,
-            associated INTEGER NOT NULL -- 1: the network this machine was connected to
+            associated INTEGER NOT NULL, -- 1: the network this machine was connected to
+            width_mhz INTEGER,           -- 20, 40, 80, 160; null: not known
+            center_mhz REAL              -- middle of all the channels it uses
         );
         CREATE INDEX IF NOT EXISTS pings_run ON pings (run_id, time_ms);
         CREATE INDEX IF NOT EXISTS scans_time ON scans (time_ms);
@@ -113,10 +115,23 @@ public sealed class ResultStore(string path) : IAsyncDisposable
         store._connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
         await store._connection.OpenAsync(cancellationToken);
         await store.ExecuteAsync(Schema, cancellationToken);
+        await store.AddMissingColumnsAsync(cancellationToken);
         return store;
     }
 
     public string DatabasePath => path;
+
+    /// <summary>Columns added after a table was first made: databases from older versions get them here.</summary>
+    private async Task AddMissingColumnsAsync(CancellationToken cancellationToken)
+    {
+        (string Table, string Column, string Type)[] added = [("scans", "width_mhz", "INTEGER"), ("scans", "center_mhz", "REAL")];
+        foreach (var (table, column, type) in added)
+        {
+            await using var check = Command($"SELECT count(*) FROM pragma_table_info('{table}') WHERE name = '{column}';");
+            if ((long)(await check.ExecuteScalarAsync(cancellationToken))! == 0)
+                await ExecuteAsync($"ALTER TABLE {table} ADD COLUMN {column} {type};", cancellationToken);
+        }
+    }
 
     private SqliteConnection Connection => _connection ?? throw new InvalidOperationException("Store is not open.");
 
@@ -162,9 +177,12 @@ public sealed class ResultStore(string path) : IAsyncDisposable
                     ("$bssid", w.Bssid), ("$freq", w.FrequencyMhz), ("$signal", w.SignalDbm), ("$avg", w.SignalAverageDbm),
                     ("$tx", w.TxBitrateMbps), ("$rx", w.RxBitrateMbps), ("$txp", w.TxPackets), ("$txf", w.TxFailed),
                     ("$txr", w.TxRetries), ("$beacon", w.BeaconLoss)),
-                ScanSample n => Command("INSERT INTO scans VALUES ($run, $t, $bssid, $ssid, $freq, $signal, $associated);",
+                ScanSample n => Command("""
+                    INSERT INTO scans (run_id, time_ms, bssid, ssid, freq_mhz, signal_dbm, associated, width_mhz, center_mhz)
+                    VALUES ($run, $t, $bssid, $ssid, $freq, $signal, $associated, $width, $center);
+                    """,
                     ("$run", runId), ("$t", Ms(n.Time)), ("$bssid", n.Bssid), ("$ssid", n.Ssid), ("$freq", n.FrequencyMhz),
-                    ("$signal", n.SignalDbm), ("$associated", n.Associated ? 1 : 0)),
+                    ("$signal", n.SignalDbm), ("$associated", n.Associated ? 1 : 0), ("$width", n.WidthMhz), ("$center", n.CenterMhz)),
                 NetEvent e => Command("INSERT INTO events VALUES ($run, $t, $kind, $detail);",
                     ("$run", runId), ("$t", Ms(e.Time)), ("$kind", e.Kind), ("$detail", e.Detail)),
                 _ => throw new ArgumentException($"Unknown sample {sample.GetType().Name}."),
@@ -201,8 +219,14 @@ public sealed class ResultStore(string path) : IAsyncDisposable
             return rows;
         }
 
-        var scans = await Read("SELECT time_ms, bssid, ssid, freq_mhz, signal_dbm, associated FROM scans WHERE run_id = $run ORDER BY time_ms;",
-            r => new ScanSample(Time(r, 0), r.GetString(1), Text(r, 2), r.GetDouble(3), Int(r, 4), r.GetInt32(5) == 1));
+        var scans = await Read("""
+            SELECT time_ms, bssid, ssid, freq_mhz, signal_dbm, associated, width_mhz, center_mhz FROM scans WHERE run_id = $run ORDER BY time_ms;
+            """,
+            r => new ScanSample(Time(r, 0), r.GetString(1), Text(r, 2), r.GetDouble(3), Int(r, 4), r.GetInt32(5) == 1)
+            {
+                WidthMhz = Int(r, 6),
+                CenterMhz = Double(r, 7),
+            });
         return new RunData(
             run,
             await Read("SELECT time_ms, target, label, ms FROM pings WHERE run_id = $run ORDER BY time_ms;",
